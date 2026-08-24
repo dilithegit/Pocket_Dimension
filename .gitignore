@@ -1,0 +1,38 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+
+# Secrets & Environment Configuration
+.env
+.env.*
+!.env.example
+*.env
+local.properties
+key.properties
+
+# Flutter & Dart Build Output
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+
+# Android Build & Signing
+android/.gradle/
+.gradle/
+android/app/debug
+android/app/profile
+android/app/release
+android/key.properties
+# Database & Memory Dumps
+*.db
+*.hprof
