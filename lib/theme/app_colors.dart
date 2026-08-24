@@ -24,10 +24,32 @@ class AppColors {
   static const Color suspicionMid = Color(0xFFFF9800);  // Wary orange (31-69%)
   static const Color suspicionHigh = Color(0xFFF44336); // Alert red (70-100%)
 
+  // World Memory / Consequence status color family
+  static const Color memoryDormant = Color(0xFF6E6E85);  // Muted gray-blue
+  static const Color memoryBrewing = Color(0xFFFFB74D);  // Warm amber
+  static const Color memoryActive = Color(0xFFEF5350);   // Erupting crimson
+  static const Color memoryResolved = Color(0xFF66BB6A); // Restored emerald
+
   // Helper method to resolve suspicion color dynamically from heat level (0-100)
   static Color getSuspicionColor(int heatLevel) {
     if (heatLevel >= 70) return suspicionHigh;
     if (heatLevel >= 31) return suspicionMid;
     return suspicionLow;
+  }
+
+  // Helper method to resolve consequence status color
+  static Color getConsequenceStatusColor(dynamic status) {
+    String name = status is Enum ? status.name : status.toString();
+    switch (name.toLowerCase()) {
+      case 'active':
+        return memoryActive;
+      case 'brewing':
+        return memoryBrewing;
+      case 'resolved':
+        return memoryResolved;
+      case 'dormant':
+      default:
+        return memoryDormant;
+    }
   }
 }

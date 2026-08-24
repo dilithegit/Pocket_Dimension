@@ -13,8 +13,8 @@ import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import '../widgets/game_notification_overlay.dart';
 
-/// Step 7: Chat / Narrative UI Screen & Step 8: Consequence Web HUD
-/// Main gameplay loop displaying scrolling narration feed, live-typing stream, and Consequence Web sheet.
+/// Step 7: Chat / Narrative UI Screen & Step 8: World Memory HUD
+/// Main gameplay loop displaying scrolling narration feed, live-typing stream, and World Memory drawer.
 class ChatScreen extends StatefulWidget {
   final VoidCallback? onReturnToSaves;
 
@@ -72,6 +72,30 @@ class _ChatScreenState extends State<ChatScreen> {
         delta = await manager.processPlayerTurn(text, client);
       }
 
+      // Check for new or active consequence updates to fire notification overlay
+      final existingWeb = manager.state.world.consequenceWeb;
+      for (final candidate in delta.consequenceUpdates) {
+        if (candidate.summary.trim().isEmpty) continue;
+        final existingIdx = existingWeb.indexWhere((c) => c.id == candidate.id);
+        bool isNew = existingIdx < 0;
+        bool statusFlippedToActive = !isNew &&
+            existingWeb[existingIdx].status != ConsequenceStatus.active &&
+            candidate.status == ConsequenceStatus.active;
+
+        if (isNew || statusFlippedToActive) {
+          if (mounted) {
+            GameNotificationOverlay.show(
+              context,
+              title: isNew ? 'New World Consequence' : 'Consequence Escalation',
+              message: candidate.summary,
+              icon: Icons.hub_outlined,
+              accentColor: AppColors.getConsequenceStatusColor(candidate.status),
+            );
+          }
+          break; // Trigger one notification per turn
+        }
+      }
+
       await _animateTextReveal(delta.narration);
 
       if (manager.isOfflineMode) {
@@ -84,7 +108,7 @@ class _ChatScreenState extends State<ChatScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('The mists of reality swirl, clouding your vision. Try again.'),
-            backgroundColor: AppColors.suspicionHigh,
+            backgroundColor: AppColors.memoryActive,
           ),
         );
       }
@@ -287,7 +311,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
       body: Stack(
         children: [
-          // Main Gameplay Layout
+          // Main Gameplay Layout (Clean sans screen-edge ambient tints)
           GameNotificationOverlay(
             child: Column(
               children: [
@@ -317,17 +341,16 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   ),
 
-                // Top Ambient Consequence HUD Bar
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 500),
+                // Top World Memory Header Bar
+                Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.md,
                     vertical: AppSpacing.sm,
                   ),
-                  decoration: BoxDecoration(
-                    color: AppColors.accent.withValues(alpha: 0.12),
-                    border: const Border(
-                      bottom: BorderSide(color: AppColors.accent, width: 1.5),
+                  decoration: const BoxDecoration(
+                    color: AppColors.surface,
+                    border: Border(
+                      bottom: BorderSide(color: AppColors.border, width: 1),
                     ),
                   ),
                   child: Row(
@@ -335,9 +358,9 @@ class _ChatScreenState extends State<ChatScreen> {
                       const Icon(Icons.hub_outlined, size: 18, color: AppColors.accent),
                       const SizedBox(width: AppSpacing.sm),
                       Text(
-                        'Consequence Web: ${state.world.consequenceWeb.length} Active Echoes',
+                        'World Memory: ${state.world.consequenceWeb.length} Active Echoes',
                         style: AppTypography.uiBody.copyWith(
-                          color: AppColors.accent,
+                          color: AppColors.inkPrimary,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -546,7 +569,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  /// Slide-Out End Drawer holding Living NPCs Roster, Consequence Web, and Character Inventory
+  /// Slide-Out End Drawer holding Living NPCs Roster, World Memory, and Character Inventory
   Widget _buildWorldSheetDrawer(BuildContext context, GameStateManager manager) {
     final state = manager.state;
     List<ConsequenceEntry> consequenceWeb = state.world.consequenceWeb;
@@ -567,7 +590,7 @@ class _ChatScreenState extends State<ChatScreen> {
               unselectedLabelColor: AppColors.inkMuted,
               tabs: [
                 Tab(text: 'Living NPCs'),
-                Tab(text: 'Consequence Web'),
+                Tab(text: 'World Memory'),
                 Tab(text: 'Inventory'),
               ],
             ),
@@ -606,16 +629,23 @@ class _ChatScreenState extends State<ChatScreen> {
                       }).toList(),
                     ),
 
-              // Consequence Web Panel
+              // World Memory Panel
               consequenceWeb.isEmpty
                   ? const Center(
-                      child: Text('No consequences recorded yet.', style: AppTypography.uiCaption),
+                      child: Text('No world memories recorded yet.', style: AppTypography.uiCaption),
                     )
                   : ListView.builder(
                       padding: const EdgeInsets.all(AppSpacing.md),
                       itemCount: consequenceWeb.length,
                       itemBuilder: (context, index) {
                         final item = consequenceWeb[index];
+                        final statusColor = AppColors.getConsequenceStatusColor(item.status);
+
+                        // Resolve involved NPC names
+                        List<String> npcNames = item.involvedNpcIds.map((id) {
+                          return state.world.npcRelationships[id]?.name ?? id;
+                        }).toList();
+
                         return Card(
                           margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                           child: Padding(
@@ -624,13 +654,17 @@ class _ChatScreenState extends State<ChatScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Icon(Icons.hub_outlined, size: 16, color: AppColors.accent),
+                                    Icon(Icons.hub_outlined, size: 16, color: statusColor),
                                     const SizedBox(width: AppSpacing.xs),
                                     Expanded(
                                       child: Text(
                                         item.summary,
-                                        style: AppTypography.narrationBody.copyWith(fontSize: 14, fontWeight: FontWeight.bold),
+                                        style: AppTypography.narrationBody.copyWith(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -638,20 +672,50 @@ class _ChatScreenState extends State<ChatScreen> {
                                 const SizedBox(height: AppSpacing.xs),
                                 Row(
                                   children: [
-                                    Chip(
-                                      label: Text('Spread: ${item.spreadLevel.name}'),
-                                      visualDensity: VisualDensity.compact,
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: statusColor.withValues(alpha: 0.15),
+                                        borderRadius: AppSpacing.borderRadiusFull,
+                                        border: Border.all(color: statusColor, width: 1),
+                                      ),
+                                      child: Text(
+                                        item.status.name.toUpperCase(),
+                                        style: AppTypography.uiCaption.copyWith(
+                                          color: statusColor,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 10,
+                                        ),
+                                      ),
                                     ),
                                     const SizedBox(width: AppSpacing.xs),
                                     Chip(
-                                      label: Text('Status: ${item.status.name}'),
+                                      label: Text(
+                                        'Spread: ${item.spreadLevel.name}',
+                                        style: AppTypography.uiCaption.copyWith(fontSize: 10),
+                                      ),
                                       visualDensity: VisualDensity.compact,
+                                      padding: EdgeInsets.zero,
                                     ),
                                   ],
                                 ),
+                                if (npcNames.isNotEmpty) ...[
+                                  const SizedBox(height: AppSpacing.xs),
+                                  Text(
+                                    'Involved NPCs: ${npcNames.join(', ')}',
+                                    style: AppTypography.uiCaption.copyWith(
+                                      color: AppColors.inkSecondary,
+                                    ),
+                                  ),
+                                ],
                                 if (item.triggerHint != null && item.triggerHint!.isNotEmpty) ...[
                                   const SizedBox(height: AppSpacing.xs),
-                                  Text('Trigger Hint: ${item.triggerHint}', style: AppTypography.uiCaption),
+                                  Text(
+                                    'Trigger Hint: ${item.triggerHint}',
+                                    style: AppTypography.uiCaption.copyWith(
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
                                 ],
                               ],
                             ),
