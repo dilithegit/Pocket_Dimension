@@ -17,10 +17,15 @@ it as part of finishing the fix.
 
 2. **Build & install.** Once tests pass, confirm the physical device is connected
    (`flutter devices` or `adb devices`) — the target device is the Samsung SM A057F
-   over USB. Run `flutter run` (or `flutter install` if a build already exists) to
-   get the fix onto that device. If the device isn't connected, say so clearly and
-   skip this step rather than silently failing or waiting indefinitely — commit and
-   push can still proceed independently.
+   over USB. 
+   **CRITICAL SECRETS FLAG**: All build and run commands (`flutter run`, `flutter build apk`)
+   MUST explicitly include `--dart-define-from-file=secrets.json` (e.g.,
+   `flutter run -d R7AWC009KWA --dart-define-from-file=secrets.json` or
+   `flutter build apk --debug --dart-define-from-file=secrets.json --android-skip-build-dependency-validation`).
+   NEVER run `flutter run` or `flutter build` without `--dart-define-from-file=secrets.json`,
+   otherwise the app compiles with an empty API key and silently falls back to offline mode.
+   If the device isn't connected, say so clearly and skip this step rather than silently
+   failing or waiting indefinitely — commit and push can still proceed independently.
 
 3. **Commit.** Write a commit message describing what the fix actually does (not
    "fix bug" — name the symptom and the cause, e.g. "Fix chat back button exiting

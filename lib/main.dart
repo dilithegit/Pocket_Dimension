@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 import 'state/game_state_manager.dart';
 import 'theme/app_theme.dart';
 import 'navigation/app_router.dart';
+import 'config/env.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  debugPrint('=== APP STARTUP GEMINI API KEY LENGTH: ${Env.geminiApiKey.length} ===');
   runApp(
     ChangeNotifierProvider<GameStateManager>(
       create: (_) => GameStateManager(),
