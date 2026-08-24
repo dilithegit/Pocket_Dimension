@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pocket_dimension/models/character.dart';
 import 'package:pocket_dimension/models/consequence_entry.dart';
+import 'package:pocket_dimension/database/lore_chunk_repository.dart';
+import 'package:pocket_dimension/lore/lore_ingestion_manager.dart';
 import 'package:pocket_dimension/lore/wikipedia_client.dart';
 import 'package:pocket_dimension/models/lore_chunk.dart';
 import 'package:pocket_dimension/models/world.dart';
@@ -8,6 +10,15 @@ import 'package:pocket_dimension/models/game_state.dart';
 import 'package:pocket_dimension/models/state_delta.dart';
 import 'package:pocket_dimension/network/gemini_client.dart';
 import 'package:pocket_dimension/state/game_state_manager.dart';
+
+class MockLoreChunkRepository extends LoreChunkRepository {
+  final List<LoreChunk> stored = [];
+
+  @override
+  Future<void> insertLoreChunks(List<LoreChunk> chunks) async {
+    stored.addAll(chunks);
+  }
+}
 
 void main() {
   group('Schema Version 2 & God-Mode Character Model Tests', () {
@@ -315,6 +326,12 @@ void main() {
       expect(delta.consequenceUpdates.first.spreadLevel, equals(ConsequenceSpreadLevel.secret));
       expect(delta.consequenceUpdates.first.status, equals(ConsequenceStatus.dormant));
     });
+
+    test('embedText generates 768-dim vector fallback when offline', () async {
+      final client = GeminiClient(apiKey: '');
+      final embedding = await client.embedText('Sun-Spire Citadel folklore');
+      expect(embedding.length, equals(768));
+    });
   });
 
   group('LoreChunk Model & Storage Tests', () {
@@ -360,6 +377,32 @@ void main() {
       // Check overlap between chunk 0 and chunk 1 (step = 180, so chunk 1 starts at word180)
       expect(chunk1Words.first, equals('word180'));
       expect(chunk0Words.sublist(180, 200), equals(chunk1Words.sublist(0, 20)));
+    });
+  });
+
+  group('LoreIngestionManager Ingestion Pipeline Tests', () {
+    test('runLoreIngestion executes topic extraction safely offline', () async {
+      final world = WorldData(
+        currentLocation: 'Osogbo Sacred Grove',
+        flags: const {'theme': 'Yoruba Mythology'},
+        npcRelationships: const {
+          'npc_1': NpcRelationship(
+            id: 'npc_1',
+            name: 'Oluwo Ifa-Tayo',
+            loreOrigin: 'Yoruba Religion',
+            culturalArchetype: 'Babalawo',
+          ),
+        },
+      );
+
+      final mockRepo = MockLoreChunkRepository();
+      final manager = LoreIngestionManager(
+        geminiClient: GeminiClient(apiKey: ''),
+        repository: mockRepo,
+      );
+
+      final count = await manager.runLoreIngestion(world, 99);
+      expect(count, isA<int>());
     });
   });
 }

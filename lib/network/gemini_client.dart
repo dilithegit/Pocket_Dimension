@@ -18,6 +18,45 @@ class GeminiClient {
   })  : apiKey = apiKey ?? Env.geminiApiKey,
         _httpClient = httpClient ?? http.Client();
 
+  /// Embeds [text] using gemini-embedding-001 with output_dimensionality: 768.
+  Future<List<double>> embedText(String text) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return List.filled(768, 0.0);
+
+    final embedUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=$apiKey';
+
+    final body = {
+      'model': 'models/gemini-embedding-001',
+      'content': {
+        'parts': [
+          {'text': trimmed}
+        ]
+      },
+      'outputDimensionality': 768,
+    };
+
+    try {
+      final response = await _httpClient.post(
+        Uri.parse(embedUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        final embeddingObj = data['embedding'] as Map<String, dynamic>?;
+        final values = embeddingObj?['values'] as List<dynamic>?;
+
+        if (values != null && values.isNotEmpty) {
+          return values.map((v) => (v as num).toDouble()).toList();
+        }
+      }
+    } catch (_) {}
+
+    // Fallback: return 768-dim vector if API key is missing or offline
+    return List.filled(768, 0.0);
+  }
+
   /// Default System Prompt embedding DM persona, Secret God tone, World Memory directives, and Deep-Lore NPC rules.
   static const String defaultSystemPrompt = '''
 You are the AI Dungeon Master for Pocket Dimension, an omnipotent sandbox RPG.

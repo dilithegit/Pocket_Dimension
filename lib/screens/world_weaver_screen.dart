@@ -9,6 +9,7 @@ import '../models/save_slot.dart';
 import '../models/game_state.dart';
 import '../models/state_delta.dart';
 import '../database/save_slot_repository.dart';
+import '../lore/lore_ingestion_manager.dart';
 import '../state/game_state_manager.dart';
 
 /// World Weaver Setup Screen - Entry screen to generate grounded fantasy worlds before character creation.
@@ -173,9 +174,12 @@ class _WorldWeaverScreenState extends State<WorldWeaverScreen> {
       slotName: 'World: ${_generatedWorld!.currentLocation}',
       state: manager.state,
     );
-    await _repository.insertSaveSlot(slot);
+    int slotId = await _repository.insertSaveSlot(slot);
 
-    // 4. Trigger callback to navigate to Character Creation
+    // 4. Trigger background lore ingestion in parallel with character creation
+    LoreIngestionManager().runLoreIngestion(_generatedWorld!, slotId);
+
+    // 5. Trigger callback to navigate to Character Creation
     if (widget.onWorldAccepted != null) {
       widget.onWorldAccepted!();
     } else {

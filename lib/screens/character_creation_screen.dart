@@ -96,6 +96,35 @@ class _CharacterCreationScreenState extends State<CharacterCreationScreen> {
       appBar: AppBar(
         title: const Text('Manifestation — Character Setup', style: AppTypography.uiHeader),
         backgroundColor: AppColors.surface,
+        actions: [
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.accent.withValues(alpha: 0.15),
+              borderRadius: AppSpacing.borderRadiusFull,
+              border: Border.all(color: AppColors.accent.withValues(alpha: 0.6), width: 1),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(strokeWidth: 1.5, color: AppColors.accent),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Gathering lore...',
+                  style: AppTypography.uiCaption.copyWith(
+                    color: AppColors.accent,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.lg),
