@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/game_state.dart';
 import '../models/state_delta.dart';
@@ -13,17 +14,41 @@ class GeminiClient {
 
   GeminiClient({
     String? apiKey,
-    this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+    this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent',
     http.Client? httpClient,
   })  : apiKey = apiKey ?? Env.geminiApiKey,
-        _httpClient = httpClient ?? http.Client();
+        _httpClient = httpClient ?? http.Client() {
+    _initSanityCheck();
+  }
+
+  void _initSanityCheck() {
+    final isPresent = apiKey.isNotEmpty;
+    debugPrint('[GeminiClient] x-goog-api-key header set: $isPresent, length: ${apiKey.length}');
+  }
+
+  /// Verification helper throwing clear error if GEMINI_API_KEY is not configured.
+  static void verifyApiKeyConfigured() {
+    if (Env.geminiApiKey.isEmpty) {
+      throw StateError('GEMINI_API_KEY not found — check secrets.json and --dart-define-from-file');
+    }
+  }
+
+  /// Centralized HTTP request header builder attaching x-goog-api-key without exposing it in URLs.
+  Map<String, String> _buildHeaders() {
+    final isPresent = apiKey.isNotEmpty;
+    debugPrint('[GeminiClient] x-goog-api-key header set: $isPresent, length: ${apiKey.length}');
+    return {
+      'Content-Type': 'application/json',
+      if (isPresent) 'x-goog-api-key': apiKey,
+    };
+  }
 
   /// Embeds [text] using gemini-embedding-001 with output_dimensionality: 768.
   Future<List<double>> embedText(String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return List.filled(768, 0.0);
 
-    final embedUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=$apiKey';
+    const embedUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent';
 
     final body = {
       'model': 'models/gemini-embedding-001',
@@ -38,7 +63,7 @@ class GeminiClient {
     try {
       final response = await _httpClient.post(
         Uri.parse(embedUrl),
-        headers: {'Content-Type': 'application/json'},
+        headers: _buildHeaders(),
         body: jsonEncode(body),
       );
 
@@ -176,16 +201,16 @@ Return ONLY valid JSON matching this exact structure:
 
     try {
       final jsonBody = jsonEncode(payloadMap);
-      print('=== [GEMINI REQUEST PAYLOAD] ===\n$jsonBody\n=================================');
+      debugPrint('=== [GEMINI REQUEST PAYLOAD] ===\n$jsonBody\n=================================');
 
       final response = await _httpClient.post(
-        Uri.parse('$baseUrl?key=$apiKey'),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse(baseUrl),
+        headers: _buildHeaders(),
         body: jsonBody,
       );
 
-      print('=== [GEMINI RESPONSE STATUS]: ${response.statusCode} ===');
-      print('=== [GEMINI RESPONSE BODY] ===\n${response.body}\n==================================');
+      debugPrint('=== [GEMINI RESPONSE STATUS]: ${response.statusCode} ===');
+      debugPrint('=== [GEMINI RESPONSE BODY] ===\n${response.body}\n==================================');
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body) as Map<String, dynamic>;
@@ -197,7 +222,7 @@ Return ONLY valid JSON matching this exact structure:
         }
       }
     } catch (e, stackTrace) {
-      print('=== [GEMINI ERROR]: $e ===\n$stackTrace');
+      debugPrint('=== [GEMINI ERROR]: $e ===\n$stackTrace');
     }
 
     return _generateOfflineFallback(state, playerInput);
@@ -216,8 +241,8 @@ Return ONLY valid JSON matching this exact structure:
       final prompt = 'Summarize the following RPG exchanges into a concise memory log (~500 tokens max), updating the existing summary:\nExisting Summary: $currentSummary\nNew Exchanges:\n${turnsToSummarize.join('\n')}';
 
       final response = await _httpClient.post(
-        Uri.parse('$baseUrl?key=$apiKey'),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse(baseUrl),
+        headers: _buildHeaders(),
         body: jsonEncode({
           'contents': [
             {
@@ -353,8 +378,8 @@ Return ONLY valid JSON.
 
     try {
       final response = await _httpClient.post(
-        Uri.parse('$baseUrl?key=$apiKey'),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse(baseUrl),
+        headers: _buildHeaders(),
         body: jsonEncode(payloadMap),
       );
 
