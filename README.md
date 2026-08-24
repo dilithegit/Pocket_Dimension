@@ -1,91 +1,92 @@
-# 📜 Pocket Dimension — Omnipotent God-Mode AI RPG Engine
+# 📜 Pocket Dimension — Omnipotent God-Mode AI RPG Engine (v1.0.0)
 
-> *"As an omnipotent deity, your physical or magical intent never fails. Stakes come from mortal reactions, suspicion, and societal consequences."*
+> *"As an omnipotent deity, your physical or magical intent never fails. Stakes come from mortal reactions, relationships, and societal consequence webs."*
 
-**Pocket Dimension** is a state-of-the-art Flutter roleplaying game engine driven by live AI narrative generation and persistent local state. Unlike traditional fantasy games bound by hit points and mana limits, Pocket Dimension places the player in the guise of an unmanifested deity whose actions strictly succeed, shifting gameplay stakes entirely to **Regional Suspicion**, **Living NPC Relationships**, and **Deep-Lore World Bible Consequences**.
+**Pocket Dimension** is a state-of-the-art Flutter roleplaying game engine driven by live AI narrative generation and persistent local state. Unlike traditional RPGs bound by hit points, mana limits, or dice-roll failures, Pocket Dimension places the player in the guise of an unmanifested deity whose actions strictly succeed, shifting gameplay stakes entirely to **Living NPC Relationships**, **Societal Consequence Webs**, and **RAG-Grounded World Bibles**.
 
 ---
 
 ## 🌟 Key Features
 
-### 1. 📖 Schema Version 2 & God-Mode Rules
-- **Zero HP, Zero Mana**: Player attributes focus strictly on Mortal Name, Guise/Origin, and Relics.
-- **Canonical Schema Version 2**: State structure enforces atomic mutations across `character`, `world`, and `narrative_memory`.
+### 1. ⚡ God-Mode Narrative Engine
+- **Zero Fail States**: No hit points, no mana bars, and no combat-failure dice rolls.
+- **Consequence Web**: Divine actions create persistent consequence entries (`secret` -> `rumored` -> `known` -> `legendary`) that evolve dynamically (`dormant` -> `brewing` -> `active` -> `resolved`).
+- **Opening World Briefing**: Atmospheric initial narrative establishing starting location and character origin.
 
-### 2. 🌍 Dynamic World Weaver Engine
-- **Live Concept Synthesis**: Generates rich, culturally grounded World Bibles containing regions, suspicion heat baselines, starting rumors, and deep-lore living NPCs.
-- **Offline Nigerian Mythology Engine**: Toggleable local engine providing a pre-woven realm (*Mythical Surulere — Sun-Spire Citadel*) featuring Yoruba Ifa keepers (*Oluwo Ifa-Tayo*), Ife heroines (*Moremi of the Sun Gate*), and Benin coral oracles (*Priestess Akenzua*).
+### 2. 🌍 Dynamic World Weaver & Deep-Lore NPCs
+- **Grounded Worldbuilding**: Synthesizes custom World Bibles based on player prompts (e.g. *"Sahelian High Empire"* or *"Coastal Steampunk Citadel"*).
+- **Deep-Lore Characters**: Every inhabitant contains a specific `lore_origin` (folklore, mythic, or historical anchor) and `cultural_archetype`, rejecting generic fantasy tropes.
 
-### 3. 💬 Book-Style Narrative Feed & Streaming DM
-- **Prose Aesthetic**: DM narration rendered in Georgia serif display face on parchment background without chat bubbles, creating a book-reading experience.
-- **Live Text-Reveal Stream**: DM prose streams live on-screen to simulate a live-typing Game Master.
-- **Safety Fallback**: Intercepts network timeouts and parsing failures with in-world narration (*"The mists of reality swirl, clouding your vision. Try again."*).
+### 3. 📚 RAG Lore Grounding (Retrieval-Augmented Generation)
+- **Wikipedia Public Fetch**: Automatically extracts reference text for world topics upon World Bible creation.
+- **768-Dim Vector Embeddings**: Chunks text (~200 words with ~20 word overlap) and embeds via `gemini-embedding-001`.
+- **Cosine Similarity Scan**: Scans player input against stored lore chunks, injecting top 3 relevant grounding contexts into the DM system prompt in real-time.
 
-### 4. 👁️ Suspicion & Masquerade HUD
-- **Ambient Vignette Tint**: Non-blocking screen-edge tint interpolates smoothly (1.5s transition) through low, mid, and high suspicion color stops.
-- **Dynamic Input Glow**: Soft glow on the prompt bar reacts to regional heat levels.
-- **Peripheral Readout**: Compact eye icon + numeric readout (`Heat: X/100`) ensures full accessibility without relying on color alone.
+### 4. 🌊 SSE Token Streaming & Word-by-Word Narration
+- **Server-Sent Events (SSE)**: Streams `streamGenerateContent` text deltas via `x-goog-api-key` header authorization.
+- **Incremental Prose Reveal**: Narration renders word-by-word on-screen with smooth auto-scroll.
 
-### 5. 📇 Living World Sheet & Slide-out Drawer
-- **Non-blocking End Drawer**: Access Living NPCs (roles, lore origins, goals, secrets), Regional Rumors, and Character Relics during gameplay.
-- **Non-intrusive Toasts**: 3-second animated top overlay banners alert on suspicion spikes (>=10%) and newly encountered inhabitants.
-
-### 6. 🗃️ SQLite Persistence & Illustrated Save Cards
-- Save slots displayed as illustrated cards featuring world names, character guises, formatted timestamps, and mood-color swatches (`Amber Gold`, `Coastal Teal`, `Crimson Oxblood`, `Deep Indigo`).
+### 5. 🛡️ Offline Fallback Mode
+- Toggleable offline engine generating fallback narrative turns, RAG embeddings, and World Bibles without requiring network access or API key configuration.
 
 ---
 
-## 🎨 Design System & Aesthetics
+## 🤖 Authored Agent Skills (`.agent/skills/`)
 
-- **Color Palette**: Oxblood Leather (`#2D1418`), Warm Parchment (`#F4EAD5`), Antique Gold (`#D4AF37`), Dark Surface (`#120B0D`).
-- **Typography Scale**: Georgia (Serif) for narrative prose, names, and lore titles; Roboto (Sans) for UI chrome, inputs, and status labels.
-- **Icons & Splash**: Native oxblood leather adaptive launcher icons (66% safe zone constraint) and custom parchment splash screen.
+The core design and execution rules of Pocket Dimension are governed by authored skill definitions:
+
+- **[`gemini-dm-prompting`](.agent/skills/gemini-dm-prompting.md)**: Standardized AI DM system instructions, God-Mode stakes, consequence web mechanics, and RAG grounding injection.
+- **[`lore-rag-retrieval`](.agent/skills/lore-rag-retrieval.md)**: Wikipedia extract fetching, overlap chunking, 768-dim `gemini-embedding-001` storage, and cosine similarity RAG retrieval.
+- **[`lore-authenticity`](.agent/skills/lore-authenticity.md)**: Directives for deep cultural anchoring and non-generic medieval fantasy NPC generation.
+- **[`post-fix-workflow`](.agent/skills/post-fix-workflow/SKILL.md)**: Execution sequence (analyze & test -> build & install to physical hardware -> commit & push).
+- **[`secrets-hygiene`](.agent/skills/secrets-hygiene.md)**: Header-based `x-goog-api-key` security, build-time `--dart-define-from-file` integration, zero-log credentials, and `.gitignore` hygiene.
+- **[`state-delta-safety`](.agent/skills/state-delta-safety.md)**: Schema Version 2 canonical state validation, single-step status/spread escalation clamping, and fallback response safety.
 
 ---
 
 ## 🛠️ Tech Stack & Architecture
 
-- **Framework**: Flutter 3.47.1 / Dart 3.13.1
+- **Framework**: Flutter 3.47.1 / Dart 3.13.1 (Android Platform)
 - **State Management**: Provider (`GameStateManager extends ChangeNotifier`)
 - **Database**: SQLite (`sqflite`, `path_provider`)
-- **Network Layer**: `GeminiClient` (`gemini-3.6-flash` via SSE streaming & `gemini-embedding-001` RAG) with payload assembly, error retry logic, and memory summarization thresholding.
-- **License**: MIT License
+- **Network Layer**: `GeminiClient` (`gemini-3.6-flash` via SSE streaming & `gemini-embedding-001` RAG) with header-based authorization (`x-goog-api-key`).
+- **Release Signing**: Custom release keystore referenced via git-ignored `android/key.properties`.
 
 ---
 
 ## 🚀 Getting Started
 
-### Prerequisites
-- Flutter SDK (>= 3.0.0)
-- Android SDK (for Android APK builds)
+### 1. Prerequisites
+- Flutter SDK (`>=3.0.0`)
+- Android SDK (API 35 target)
 
-### Installation & Run
-
-1. Clone the repository:
-```bash
-git clone https://github.com/<your-username>/pocket-dimension.git
-cd pocket-dimension
+### 2. Installation & Secrets Configuration
+Create a `secrets.json` file at project root (git-ignored):
+```json
+{
+  "GEMINI_API_KEY": "YOUR_GEMINI_API_KEY"
+}
 ```
 
-2. Install dependencies:
+### 3. Run on Device
 ```bash
-flutter pub get
+flutter run -d <device_id> --dart-define-from-file=secrets.json
 ```
 
-3. Run the app with your Gemini API key:
-```bash
-flutter run --dart-define=GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
-```
-
-*(Note: You can also switch to Offline Mode in **Grimoire Configurations** to play without an API key!)*
-
-4. Build release APK:
+### 4. Build Release APK
 ```bash
 flutter build apk --release
 ```
 
 ---
 
+## 📌 Known Limitations & Roadmap
+
+- **Play Store Listing**: Google Play Console store listing graphics and privacy policy URL hosting pending for public app store release.
+- **Multi-Slot Lore Isolation**: Future optimization to prune background SQLite lore chunks when save slots are deleted.
+
+---
+
 ## 📄 License
 
-Distributed under the **MIT License**. See `LICENSE` for more information.
+Distributed under the **MIT License**. See `LICENSE` for details.
