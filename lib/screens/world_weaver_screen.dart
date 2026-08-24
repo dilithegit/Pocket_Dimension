@@ -81,15 +81,18 @@ class _WorldWeaverScreenState extends State<WorldWeaverScreen> {
   WorldData _getPreWovenNigerianWorld() {
     return WorldData.fromJson({
       'current_location': 'Mythical Surulere — Sun-Spire Citadel',
-      'regional_suspicion': {
-        'Mythical Surulere — Sun-Spire Citadel': {
-          'heat_level': 5,
-          'rumors': [
-            'Ancestral spirits whisper of an unmanifested deity walking the grand Eko market.',
-            'The Griots of Osogbo detected a celestial ripple over the Olokun tide spires.'
-          ]
+      'consequence_web': [
+        {
+          'id': 'c_surulere_whispers',
+          'summary': 'Ancestral spirits whisper of an unmanifested deity walking the grand Eko market',
+          'involved_npc_ids': ['npc_oluwo'],
+          'location': 'Mythical Surulere — Sun-Spire Citadel',
+          'origin_turn': 1,
+          'spread_level': 'secret',
+          'status': 'dormant',
+          'trigger_hint': 'Celestial ripple detected over Olokun tide spires'
         }
-      },
+      ],
       'flags': {
         'realm_type': 'Nigerian Mythology — Pre-Woven Offline Realm',
         'pantheon_status': 'Ancient Orisha watching in secret',
@@ -289,9 +292,9 @@ class _WorldWeaverScreenState extends State<WorldWeaverScreen> {
                       ),
                       const SizedBox(height: AppSpacing.xs),
                       Text(
-                        'Suspicion Level: ${_getInitialHeat()}%',
+                        'Consequence Echoes: ${_generatedWorld!.consequenceWeb.length}',
                         style: AppTypography.uiBody.copyWith(
-                          color: AppColors.getSuspicionColor(_getInitialHeat()),
+                          color: AppColors.accent,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -301,19 +304,19 @@ class _WorldWeaverScreenState extends State<WorldWeaverScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
 
-              // Rumors Section
-              const Text('Active Regional Rumors', style: AppTypography.uiHeader),
+              // Consequence Web Section
+              const Text('Active Consequence Echoes', style: AppTypography.uiHeader),
               const SizedBox(height: AppSpacing.xs),
-              ..._getRumors().map(
-                (rumor) => Padding(
+              ..._generatedWorld!.consequenceWeb.map(
+                (c) => Padding(
                   padding: const EdgeInsets.only(bottom: AppSpacing.xs),
                   child: Row(
                     children: [
-                      const Icon(Icons.fiber_manual_record,
-                          size: 8, color: AppColors.accent),
+                      const Icon(Icons.hub_outlined,
+                          size: 14, color: AppColors.accent),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
-                        child: Text(rumor, style: AppTypography.narrationBody.copyWith(fontSize: 14)),
+                        child: Text(c.summary, style: AppTypography.narrationBody.copyWith(fontSize: 14)),
                       ),
                     ],
                   ),
@@ -384,17 +387,7 @@ class _WorldWeaverScreenState extends State<WorldWeaverScreen> {
     );
   }
 
-  int _getInitialHeat() {
-    if (_generatedWorld == null) return 0;
-    String loc = _generatedWorld!.currentLocation;
-    return _generatedWorld!.regionalSuspicion[loc]?.heatLevel ?? 0;
-  }
 
-  List<String> _getRumors() {
-    if (_generatedWorld == null) return [];
-    String loc = _generatedWorld!.currentLocation;
-    return _generatedWorld!.regionalSuspicion[loc]?.rumors ?? [];
-  }
 }
 
 // Helper to wrap initial WorldData into a StateDelta for GameStateManager

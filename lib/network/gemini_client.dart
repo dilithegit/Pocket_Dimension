@@ -13,7 +13,7 @@ class GeminiClient {
 
   GeminiClient({
     String? apiKey,
-    this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
+    this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent',
     http.Client? httpClient,
   })  : apiKey = apiKey ?? Env.geminiApiKey,
         _httpClient = httpClient ?? http.Client();
@@ -108,11 +108,17 @@ Return ONLY valid JSON matching this exact structure:
     }
 
     try {
+      final jsonBody = jsonEncode(payloadMap);
+      print('=== [GEMINI REQUEST PAYLOAD] ===\n$jsonBody\n=================================');
+
       final response = await _httpClient.post(
         Uri.parse('$baseUrl?key=$apiKey'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(payloadMap),
+        body: jsonBody,
       );
+
+      print('=== [GEMINI RESPONSE STATUS]: ${response.statusCode} ===');
+      print('=== [GEMINI RESPONSE BODY] ===\n${response.body}\n==================================');
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body) as Map<String, dynamic>;
@@ -123,8 +129,8 @@ Return ONLY valid JSON matching this exact structure:
           return StateDelta.fromJson(jsonResult);
         }
       }
-    } catch (e) {
-      // Fallback on error or connection issues
+    } catch (e, stackTrace) {
+      print('=== [GEMINI ERROR]: $e ===\n$stackTrace');
     }
 
     return _generateOfflineFallback(state, playerInput);

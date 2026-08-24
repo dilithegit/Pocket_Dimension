@@ -12,9 +12,17 @@ malformed value, and a bug in parsing shouldn't corrupt a player's save.
 
 ## Validate before mutating, every time
 
-1. **Suspicion**: clamp `suspicionIncrease` to a defined sane range (e.g. 0–25 per
-   turn) before adding it to `RegionalSuspicion.heatLevel`. Never trust the raw
-   model value directly into a running total.
+1. **Consequence entries**: validate every `consequenceUpdates` entry before
+   merging it into `WorldData.consequenceWeb`. New entries require a non-empty
+   `summary` — drop (and log) any entry missing one rather than inserting a blank
+   memory. `spreadLevel` and `status` must match the defined enum values exactly;
+   reject unrecognized values rather than storing them as free text. Cap new
+   entries to a sane number per turn (e.g. 2) — if a delta proposes more, keep the
+   most significant and drop the rest rather than flooding the World Memory panel.
+   Updates to an existing entry (matched by `id`) may only move `status` forward
+   (`dormant → brewing → active → resolved`) or `spreadLevel` forward
+   (`secret → rumored → known → legendary`) in one step at a time — reject a
+   delta that tries to jump multiple stages or move backward in a single turn.
 2. **NPC updates**: if `npcUpdates` references an `id` not already in
    `WorldData.livingNpcs`, treat it as a new NPC and require `loreOrigin` and
    `culturalArchetype` to be present — if either is missing, drop that NPC update

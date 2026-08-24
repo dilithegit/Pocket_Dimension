@@ -64,9 +64,7 @@ class GameState {
       ),
       world: WorldData(
         currentLocation: startingLocation,
-        regionalSuspicion: {
-          startingLocation: const RegionalSuspicion(heatLevel: 0, rumors: []),
-        },
+        consequenceWeb: const [],
         flags: const {},
         npcRelationships: const {},
       ),

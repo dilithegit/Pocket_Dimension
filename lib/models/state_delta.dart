@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 import 'character.dart';
+import 'consequence_entry.dart';
 import 'world.dart';
 
 /// Represents validated state deltas proposed by the AI DM Engine.
@@ -7,7 +8,7 @@ import 'world.dart';
 class StateDelta {
   final String narration;
   final Map<String, dynamic> flagsSet;
-  final Map<String, dynamic> suspicionIncrease;
+  final List<ConsequenceEntry> consequenceUpdates;
   final List<NpcRelationship> npcUpdates;
   final List<InventoryItem> inventoryAdd;
   final List<InventoryItem> inventoryRemove;
@@ -16,7 +17,7 @@ class StateDelta {
   const StateDelta({
     required this.narration,
     this.flagsSet = const {},
-    this.suspicionIncrease = const {},
+    this.consequenceUpdates = const [],
     this.npcUpdates = const [],
     this.inventoryAdd = const [],
     this.inventoryRemove = const [],
@@ -33,9 +34,14 @@ class StateDelta {
         ? Map<String, dynamic>.from(rawDelta['flags_set'] as Map)
         : const {};
 
-    Map<String, dynamic> suspicion = rawDelta['suspicion_increase'] is Map
-        ? Map<String, dynamic>.from(rawDelta['suspicion_increase'] as Map)
-        : const {};
+    List<ConsequenceEntry> consequences = [];
+    if (rawDelta['consequence_updates'] is List) {
+      for (var item in (rawDelta['consequence_updates'] as List)) {
+        if (item is Map<String, dynamic>) {
+          consequences.add(ConsequenceEntry.fromJson(item));
+        }
+      }
+    }
 
     List<NpcRelationship> npcs = [];
     if (rawDelta['npc_updates'] is List) {
@@ -70,7 +76,7 @@ class StateDelta {
     return StateDelta(
       narration: narration,
       flagsSet: flags,
-      suspicionIncrease: suspicion,
+      consequenceUpdates: consequences,
       npcUpdates: npcs,
       inventoryAdd: invAdd,
       inventoryRemove: invRem,

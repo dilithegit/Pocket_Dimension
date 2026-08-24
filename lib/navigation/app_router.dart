@@ -22,18 +22,39 @@ class AppRouter extends StatefulWidget {
 }
 
 class _AppRouterState extends State<AppRouter> {
-  AppScreenRoute _currentRoute = AppScreenRoute.saveSlots;
+  final List<AppScreenRoute> _screenStack = [AppScreenRoute.saveSlots];
 
   void _navigateTo(AppScreenRoute route) {
     setState(() {
-      _currentRoute = route;
+      if (_screenStack.isEmpty || _screenStack.last != route) {
+        _screenStack.add(route);
+      }
     });
+  }
+
+  void _resetToSaves() {
+    setState(() {
+      _screenStack.clear();
+      _screenStack.add(AppScreenRoute.saveSlots);
+    });
+  }
+
+  void _handlePop() {
+    if (_screenStack.length > 1) {
+      setState(() {
+        _screenStack.removeLast();
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final currentRoute =
+        _screenStack.isNotEmpty ? _screenStack.last : AppScreenRoute.saveSlots;
+    final bool canPop = _screenStack.length <= 1;
+
     Widget activeScreen;
-    switch (_currentRoute) {
+    switch (currentRoute) {
       case AppScreenRoute.saveSlots:
         activeScreen = SaveSlotsScreen(
           key: const ValueKey('saveSlots'),
@@ -60,37 +81,44 @@ class _AppRouterState extends State<AppRouter> {
       case AppScreenRoute.chatScreen:
         activeScreen = ChatScreen(
           key: const ValueKey('chatScreen'),
-          onReturnToSaves: () => _navigateTo(AppScreenRoute.saveSlots),
+          onReturnToSaves: _resetToSaves,
         );
         break;
 
       case AppScreenRoute.settings:
         activeScreen = SettingsScreen(
           key: const ValueKey('settings'),
-          onBack: () => _navigateTo(AppScreenRoute.saveSlots),
+          onBack: _handlePop,
         );
         break;
     }
 
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 350),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeInCubic,
-      transitionBuilder: (Widget child, Animation<double> animation) {
-        final slideAnimation = Tween<Offset>(
-          begin: const Offset(0.04, 0.0),
-          end: Offset.zero,
-        ).animate(animation);
-
-        return FadeTransition(
-          opacity: animation,
-          child: SlideTransition(
-            position: slideAnimation,
-            child: child,
-          ),
-        );
+    return PopScope(
+      canPop: canPop,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _handlePop();
       },
-      child: activeScreen,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 350),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (Widget child, Animation<double> animation) {
+          final slideAnimation = Tween<Offset>(
+            begin: const Offset(0.04, 0.0),
+            end: Offset.zero,
+          ).animate(animation);
+
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: slideAnimation,
+              child: child,
+            ),
+          );
+        },
+        child: activeScreen,
+      ),
     );
   }
 }

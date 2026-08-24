@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../models/game_state.dart';
 import '../models/character.dart';
 import '../models/world.dart';
+import '../models/consequence_entry.dart';
 import '../models/state_delta.dart';
 import '../models/save_slot.dart';
 import '../database/save_slot_repository.dart';
@@ -149,34 +150,83 @@ class GameStateManager extends ChangeNotifier {
     Map<String, dynamic> updatedFlags = Map.from(_state.world.flags);
     updatedFlags.addAll(delta.flagsSet);
 
-    // --- B. Regional Suspicion Update ---
-    Map<String, RegionalSuspicion> updatedSuspicion =
-        Map.from(_state.world.regionalSuspicion);
-    String currentLoc = delta.locationChange ?? _state.world.currentLocation;
+    // --- B. Consequence Web Merging & Validation ---
+    List<ConsequenceEntry> updatedConsequences =
+        List.from(_state.world.consequenceWeb);
+    int newEntriesAddedThisTurn = 0;
 
-    if (delta.suspicionIncrease.isNotEmpty) {
-      String region = delta.suspicionIncrease['region_name'] as String? ?? currentLoc;
-      int heatInc = (delta.suspicionIncrease['heat_increase'] as num?)?.toInt() ?? 0;
-      String? newRumor = delta.suspicionIncrease['new_rumor'] as String?;
-
-      RegionalSuspicion existing = updatedSuspicion[region] ??
-          const RegionalSuspicion(heatLevel: 0, rumors: []);
-
-      List<String> newRumorList = List.from(existing.rumors);
-      if (newRumor != null && newRumor.isNotEmpty && !newRumorList.contains(newRumor)) {
-        newRumorList.add(newRumor);
+    for (ConsequenceEntry candidate in delta.consequenceUpdates) {
+      // Rule 1: New entries require a non-empty summary
+      if (candidate.summary.trim().isEmpty) {
+        print(
+            '[GameStateManager] Dropped consequence update with empty summary: ${candidate.id}');
+        continue;
       }
 
-      updatedSuspicion[region] = existing.copyWith(
-        heatLevel: (existing.heatLevel + heatInc).clamp(0, 100),
-        rumors: newRumorList,
-      );
+      int existingIdx =
+          updatedConsequences.indexWhere((c) => c.id == candidate.id);
+      if (existingIdx >= 0) {
+        // Update to an existing entry: validate status & spreadLevel single-step progression
+        ConsequenceEntry existing = updatedConsequences[existingIdx];
+
+        int currentStatusIdx = existing.status.index;
+        int targetStatusIdx = candidate.status.index;
+        int safeStatusIdx = currentStatusIdx;
+        if (targetStatusIdx > currentStatusIdx) {
+          safeStatusIdx = (targetStatusIdx - currentStatusIdx > 1)
+              ? currentStatusIdx + 1
+              : targetStatusIdx;
+        }
+
+        int currentSpreadIdx = existing.spreadLevel.index;
+        int targetSpreadIdx = candidate.spreadLevel.index;
+        int safeSpreadIdx = currentSpreadIdx;
+        if (targetSpreadIdx > currentSpreadIdx) {
+          safeSpreadIdx = (targetSpreadIdx - currentSpreadIdx > 1)
+              ? currentSpreadIdx + 1
+              : targetSpreadIdx;
+        }
+
+        updatedConsequences[existingIdx] = existing.copyWith(
+          summary: candidate.summary.isNotEmpty
+              ? candidate.summary
+              : existing.summary,
+          involvedNpcIds: candidate.involvedNpcIds.isNotEmpty
+              ? candidate.involvedNpcIds
+              : existing.involvedNpcIds,
+          location: candidate.location.isNotEmpty
+              ? candidate.location
+              : existing.location,
+          spreadLevel: ConsequenceSpreadLevel.values[safeSpreadIdx],
+          status: ConsequenceStatus.values[safeStatusIdx],
+          triggerHint: candidate.triggerHint ?? existing.triggerHint,
+        );
+      } else {
+        // New entry: cap to max 2 new entries per turn
+        if (newEntriesAddedThisTurn >= 2) {
+          print(
+              '[GameStateManager] Clamped extra consequence entry: ${candidate.id}');
+          continue;
+        }
+        updatedConsequences.add(candidate);
+        newEntriesAddedThisTurn++;
+      }
     }
 
     // --- C. Deep-Lore Dynamic NPCs Update ---
     Map<String, NpcRelationship> updatedNpcs =
         Map.from(_state.world.npcRelationships);
     for (NpcRelationship npc in delta.npcUpdates) {
+      bool isNew = !updatedNpcs.containsKey(npc.id);
+      if (isNew) {
+        // Validate loreOrigin & culturalArchetype requirement
+        if (npc.loreOrigin.trim().isEmpty ||
+            npc.culturalArchetype.trim().isEmpty) {
+          print('[GameStateManager] Dropped lore-less NPC update: ${npc.name}');
+          continue;
+        }
+      }
+
       NpcRelationship existing = updatedNpcs[npc.id] ?? npc;
       List<String> mergedFacts = List.from(existing.knownFacts);
       for (String fact in npc.knownFacts) {
@@ -194,17 +244,20 @@ class GameStateManager extends ChangeNotifier {
     // --- D. Inventory Updates ---
     List<InventoryItem> updatedInventory = List.from(_state.character.inventory);
 
-    // Remove items
+    // Remove items safely
     for (var itemRem in delta.inventoryRemove) {
-      updatedInventory.removeWhere((item) => item.id == itemRem.id || item.name == itemRem.name);
+      updatedInventory.removeWhere(
+          (item) => item.id == itemRem.id || item.name == itemRem.name);
     }
 
     // Add items
     for (var itemAdd in delta.inventoryAdd) {
-      int existingIdx = updatedInventory.indexWhere((item) => item.id == itemAdd.id);
+      int existingIdx =
+          updatedInventory.indexWhere((item) => item.id == itemAdd.id);
       if (existingIdx >= 0) {
         var existing = updatedInventory[existingIdx];
-        updatedInventory[existingIdx] = existing.copyWith(qty: existing.qty + itemAdd.qty);
+        updatedInventory[existingIdx] =
+            existing.copyWith(qty: existing.qty + itemAdd.qty);
       } else {
         updatedInventory.add(itemAdd);
       }
@@ -216,6 +269,7 @@ class GameStateManager extends ChangeNotifier {
       updatedTurns.add('Player: $playerInput');
     }
     updatedTurns.add('DM: ${delta.narration}');
+    String currentLoc = delta.locationChange ?? _state.world.currentLocation;
 
     // Assemble updated GameState
     _state = _state.copyWith(
@@ -224,7 +278,7 @@ class GameStateManager extends ChangeNotifier {
       ),
       world: _state.world.copyWith(
         currentLocation: currentLoc,
-        regionalSuspicion: updatedSuspicion,
+        consequenceWeb: updatedConsequences,
         flags: updatedFlags,
         npcRelationships: updatedNpcs,
       ),

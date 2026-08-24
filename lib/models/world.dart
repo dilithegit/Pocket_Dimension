@@ -1,43 +1,5 @@
 import 'package:meta/meta.dart';
-
-/// Suspicion level and active rumors for a specific region.
-@immutable
-class RegionalSuspicion {
-  final int heatLevel;
-  final List<String> rumors;
-
-  const RegionalSuspicion({
-    this.heatLevel = 0,
-    this.rumors = const [],
-  });
-
-  Map<String, dynamic> toJson() {
-    return {
-      'heat_level': heatLevel,
-      'rumors': rumors,
-    };
-  }
-
-  factory RegionalSuspicion.fromJson(Map<String, dynamic> json) {
-    return RegionalSuspicion(
-      heatLevel: (json['heat_level'] as num?)?.toInt() ?? 0,
-      rumors: (json['rumors'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          const [],
-    );
-  }
-
-  RegionalSuspicion copyWith({
-    int? heatLevel,
-    List<String>? rumors,
-  }) {
-    return RegionalSuspicion(
-      heatLevel: heatLevel ?? this.heatLevel,
-      rumors: rumors ?? this.rumors,
-    );
-  }
-}
+import 'consequence_entry.dart';
 
 /// NpcRelationship model accommodating Deep-Lore NPC Generation.
 /// Holds lore origin anchors, cultural archetypes, independent goals, and memory of player actions.
@@ -142,27 +104,22 @@ class NpcRelationship {
   }
 }
 
-/// WorldData model holding world state, suspicion, flags, and living NPCs.
+/// WorldData model holding world state, Consequence Web, flags, and living NPCs.
 @immutable
 class WorldData {
   final String currentLocation;
-  final Map<String, RegionalSuspicion> regionalSuspicion;
+  final List<ConsequenceEntry> consequenceWeb;
   final Map<String, dynamic> flags;
   final Map<String, NpcRelationship> npcRelationships;
 
   const WorldData({
     required this.currentLocation,
-    this.regionalSuspicion = const {},
+    this.consequenceWeb = const [],
     this.flags = const {},
     this.npcRelationships = const {},
   });
 
   Map<String, dynamic> toJson() {
-    Map<String, dynamic> suspicionJson = {};
-    regionalSuspicion.forEach((key, value) {
-      suspicionJson[key] = value.toJson();
-    });
-
     Map<String, dynamic> npcJson = {};
     npcRelationships.forEach((key, value) {
       npcJson[key] = value.toJson();
@@ -170,7 +127,7 @@ class WorldData {
 
     return {
       'current_location': currentLocation,
-      'regional_suspicion': suspicionJson,
+      'consequence_web': consequenceWeb.map((e) => e.toJson()).toList(),
       'flags': flags,
       'npc_relationships': npcJson,
     };
@@ -179,13 +136,12 @@ class WorldData {
   factory WorldData.fromJson(Map<String, dynamic> json) {
     String location = json['current_location'] as String? ?? 'Unknown Realm';
 
-    Map<String, RegionalSuspicion> parsedSuspicion = {};
-    if (json['regional_suspicion'] is Map) {
-      (json['regional_suspicion'] as Map<String, dynamic>).forEach((k, v) {
-        if (v is Map<String, dynamic>) {
-          parsedSuspicion[k] = RegionalSuspicion.fromJson(v);
-        }
-      });
+    List<ConsequenceEntry> parsedConsequences = [];
+    if (json['consequence_web'] is List) {
+      parsedConsequences = (json['consequence_web'] as List<dynamic>)
+          .whereType<Map<String, dynamic>>()
+          .map((e) => ConsequenceEntry.fromJson(e))
+          .toList();
     }
 
     Map<String, dynamic> parsedFlags = {};
@@ -204,7 +160,7 @@ class WorldData {
 
     return WorldData(
       currentLocation: location,
-      regionalSuspicion: parsedSuspicion,
+      consequenceWeb: parsedConsequences,
       flags: parsedFlags,
       npcRelationships: parsedNpcs,
     );
@@ -212,13 +168,13 @@ class WorldData {
 
   WorldData copyWith({
     String? currentLocation,
-    Map<String, RegionalSuspicion>? regionalSuspicion,
+    List<ConsequenceEntry>? consequenceWeb,
     Map<String, dynamic>? flags,
     Map<String, NpcRelationship>? npcRelationships,
   }) {
     return WorldData(
       currentLocation: currentLocation ?? this.currentLocation,
-      regionalSuspicion: regionalSuspicion ?? this.regionalSuspicion,
+      consequenceWeb: consequenceWeb ?? this.consequenceWeb,
       flags: flags ?? this.flags,
       npcRelationships: npcRelationships ?? this.npcRelationships,
     );

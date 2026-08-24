@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pocket_dimension/models/character.dart';
+import 'package:pocket_dimension/models/consequence_entry.dart';
 import 'package:pocket_dimension/models/world.dart';
 import 'package:pocket_dimension/models/game_state.dart';
 import 'package:pocket_dimension/models/state_delta.dart';
@@ -72,6 +73,30 @@ void main() {
     });
   });
 
+  group('ConsequenceEntry & Web Model Tests', () {
+    test('ConsequenceEntry serializes enums and fields correctly', () {
+      const entry = ConsequenceEntry(
+        id: 'c_starfire_1',
+        summary: 'Starfire revealed in the grand market plaza',
+        involvedNpcIds: ['npc_1', 'npc_2'],
+        location: 'Sun-Spire Citadel',
+        originTurn: 1,
+        spreadLevel: ConsequenceSpreadLevel.rumored,
+        status: ConsequenceStatus.brewing,
+        triggerHint: 'Mortals are whispering about unchanneled magic',
+      );
+
+      final jsonMap = entry.toJson();
+      expect(jsonMap['spread_level'], equals('rumored'));
+      expect(jsonMap['status'], equals('brewing'));
+
+      final parsed = ConsequenceEntry.fromJson(jsonMap);
+      expect(parsed.id, equals('c_starfire_1'));
+      expect(parsed.spreadLevel, equals(ConsequenceSpreadLevel.rumored));
+      expect(parsed.status, equals(ConsequenceStatus.brewing));
+    });
+  });
+
   group('GameStateManager Mutation & Notification Tests', () {
     late GameStateManager manager;
 
@@ -85,7 +110,7 @@ void main() {
       );
     });
 
-    test('applyDelta correctly updates flags, suspicion, deep-lore NPCs, and inventory', () {
+    test('applyDelta correctly merges valid consequenceUpdates, deep-lore NPCs, and inventory', () {
       bool listenerNotified = false;
       manager.addListener(() {
         listenerNotified = true;
@@ -95,11 +120,18 @@ void main() {
         'narration': 'The sky cracks open with golden lightning.',
         'state_delta': {
           'flags_set': {'sky_cracked': true},
-          'suspicion_increase': {
-            'region_name': 'Old Empire Ruins',
-            'heat_increase': 20,
-            'new_rumor': 'Gods walk the ruins.'
-          },
+          'consequence_updates': [
+            {
+              'id': 'c_sky_cracked',
+              'summary': 'Sky cracked open with golden lightning above ruins',
+              'involved_npc_ids': ['npc_guard'],
+              'location': 'Old Empire Ruins',
+              'origin_turn': 1,
+              'spread_level': 'rumored',
+              'status': 'brewing',
+              'trigger_hint': 'Guards are investigating the sky rupture'
+            }
+          ],
           'npc_updates': [
             {
               'id': 'npc_guard',
@@ -125,9 +157,11 @@ void main() {
       expect(listenerNotified, isTrue);
       expect(manager.state.world.flags['sky_cracked'], isTrue);
 
-      final suspicion = manager.state.world.regionalSuspicion['Old Empire Ruins'];
-      expect(suspicion?.heatLevel, equals(20));
-      expect(suspicion?.rumors, contains('Gods walk the ruins.'));
+      expect(manager.state.world.consequenceWeb.length, equals(1));
+      final consequence = manager.state.world.consequenceWeb.first;
+      expect(consequence.summary, contains('Sky cracked open'));
+      expect(consequence.spreadLevel, equals(ConsequenceSpreadLevel.rumored));
+      expect(consequence.status, equals(ConsequenceStatus.brewing));
 
       expect(manager.state.world.npcRelationships.containsKey('npc_guard'), isTrue);
       final npc = manager.state.world.npcRelationships['npc_guard'];
@@ -136,6 +170,87 @@ void main() {
 
       expect(manager.state.character.inventory.length, equals(1));
       expect(manager.state.character.inventory.first.name, equals('Orb of Dawn'));
+    });
+
+    test('consequenceUpdates drops empty summary and clamps extra new entries to 2 per turn', () {
+      final delta = StateDelta.fromJson({
+        'narration': 'Multiple rumors ignite.',
+        'state_delta': {
+          'consequence_updates': [
+            {'id': 'c_1', 'summary': '', 'status': 'brewing'}, // Empty summary: dropped
+            {'id': 'c_2', 'summary': 'Summary 2', 'status': 'dormant'},
+            {'id': 'c_3', 'summary': 'Summary 3', 'status': 'dormant'},
+            {'id': 'c_4', 'summary': 'Summary 4', 'status': 'dormant'}, // Exceeds 2 new: clamped
+          ]
+        }
+      });
+
+      manager.applyDelta(delta);
+
+      final web = manager.state.world.consequenceWeb;
+      expect(web.length, equals(2));
+      expect(web.map((e) => e.id), containsAll(['c_2', 'c_3']));
+      expect(web.map((e) => e.id), isNot(contains('c_1')));
+      expect(web.map((e) => e.id), isNot(contains('c_4')));
+    });
+
+    test('consequenceUpdates clamps multi-step status and spreadLevel jumps to single step', () {
+      // Step 1: Add initial dormant/secret entry
+      final initialDelta = StateDelta.fromJson({
+        'narration': 'Initial whisper.',
+        'state_delta': {
+          'consequence_updates': [
+            {
+              'id': 'c_jump',
+              'summary': 'A secret myth begins',
+              'spread_level': 'secret', // index 0
+              'status': 'dormant', // index 0
+            }
+          ]
+        }
+      });
+      manager.applyDelta(initialDelta);
+
+      // Step 2: Proposed jump dormant (0) -> active (2) and secret (0) -> legendary (3)
+      final jumpDelta = StateDelta.fromJson({
+        'narration': 'A wild leap in awareness.',
+        'state_delta': {
+          'consequence_updates': [
+            {
+              'id': 'c_jump',
+              'summary': 'A secret myth begins',
+              'spread_level': 'legendary', // jump index 0 -> 3
+              'status': 'active', // jump index 0 -> 2
+            }
+          ]
+        }
+      });
+      manager.applyDelta(jumpDelta);
+
+      final entry = manager.state.world.consequenceWeb.firstWhere((e) => e.id == 'c_jump');
+      // Should be clamped to 1 step forward: dormant (0) -> brewing (1), secret (0) -> rumored (1)
+      expect(entry.status, equals(ConsequenceStatus.brewing));
+      expect(entry.spreadLevel, equals(ConsequenceSpreadLevel.rumored));
+    });
+
+    test('npcUpdates drops new NPC if loreOrigin or culturalArchetype is missing', () {
+      final delta = StateDelta.fromJson({
+        'narration': 'A mysterious stranger appears.',
+        'state_delta': {
+          'npc_updates': [
+            {
+              'id': 'npc_generic',
+              'name': 'Bob the Blacksmith',
+              'lore_origin': '', // Empty: violates lore requirement for new NPC
+              'cultural_archetype': 'Generic Blacksmith',
+            }
+          ]
+        }
+      });
+
+      manager.applyDelta(delta);
+
+      expect(manager.state.world.npcRelationships.containsKey('npc_generic'), isFalse);
     });
 
     test('shouldSummarize returns true when recent turns reach 10', () {
