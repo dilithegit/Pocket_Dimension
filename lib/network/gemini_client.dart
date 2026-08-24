@@ -13,7 +13,7 @@ class GeminiClient {
 
   GeminiClient({
     String? apiKey,
-    this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent',
+    this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
     http.Client? httpClient,
   })  : apiKey = apiKey ?? Env.geminiApiKey,
         _httpClient = httpClient ?? http.Client();

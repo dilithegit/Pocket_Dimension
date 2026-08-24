@@ -10,6 +10,8 @@
 .svn/
 
 # Secrets & Environment Configuration
+secrets.json
+*.key
 .env
 .env.*
 !.env.example
