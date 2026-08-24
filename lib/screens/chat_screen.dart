@@ -67,9 +67,31 @@ class _ChatScreenState extends State<ChatScreen> {
       StateDelta delta;
       if (manager.isOfflineMode) {
         delta = _buildOfflineMockTurn(manager.state, text);
+        await _animateTextReveal(delta.narration);
       } else {
+        setState(() {
+          _isStreaming = true;
+          _streamingNarration = '';
+        });
+
         final client = GeminiClient();
-        delta = await manager.processPlayerTurn(text, client);
+        delta = await manager.processPlayerTurn(
+          text,
+          client,
+          onTextDelta: (chunk) {
+            if (mounted) {
+              setState(() {
+                _streamingNarration += chunk;
+              });
+              _scrollToBottom();
+            }
+          },
+        );
+
+        setState(() {
+          _isStreaming = false;
+          _streamingNarration = '';
+        });
       }
 
       // Check for new or active consequence updates to fire notification overlay
@@ -95,8 +117,6 @@ class _ChatScreenState extends State<ChatScreen> {
           break; // Trigger one notification per turn
         }
       }
-
-      await _animateTextReveal(delta.narration);
 
       if (manager.isOfflineMode) {
         manager.applyDelta(delta, playerInput: text);

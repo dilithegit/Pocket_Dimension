@@ -119,6 +119,7 @@ class GameStateManager extends ChangeNotifier {
     GeminiClient client, {
     String? worldBibleContext,
     int? saveSlotId,
+    void Function(String textDelta)? onTextDelta,
   }) async {
     _isProcessing = true;
     notifyListeners();
@@ -144,6 +145,7 @@ class GameStateManager extends ChangeNotifier {
         playerInput: playerInput,
         worldBibleContext: worldBibleContext,
         groundingContext: groundingContextStr,
+        onTextDelta: onTextDelta,
       );
 
       // 2. Apply validated delta updates to in-memory state

@@ -152,12 +152,15 @@ Return ONLY valid JSON matching this exact structure:
 ''';
 
   /// Generates the next turn narration and state delta based on current state and player input.
+  /// Generates the next turn narration and state delta based on current state and player input.
+  /// Subscribes to SSE stream via streamGenerateContent and emits incremental text deltas via [onTextDelta].
   Future<StateDelta> processTurn({
     required GameState state,
     required String playerInput,
     String? worldBibleContext,
     String? groundingContext,
     String? customSystemPrompt,
+    void Function(String textDelta)? onTextDelta,
   }) async {
     final prompt = customSystemPrompt ?? defaultSystemPrompt;
     final worldContextStr = worldBibleContext != null
@@ -195,37 +198,96 @@ Return ONLY valid JSON matching this exact structure:
     };
 
     if (apiKey.isEmpty) {
-      // Fallback / Offline / Mock response when API key is unconfigured
-      return _generateOfflineFallback(state, playerInput);
+      final offlineDelta = _generateOfflineFallback(state, playerInput);
+      onTextDelta?.call(offlineDelta.narration);
+      return offlineDelta;
     }
 
     try {
       final jsonBody = jsonEncode(payloadMap);
-      debugPrint('=== [GEMINI REQUEST PAYLOAD] ===\n$jsonBody\n=================================');
+      debugPrint('=== [GEMINI SSE STREAMING REQUEST] ===');
 
-      final response = await _httpClient.post(
-        Uri.parse(baseUrl),
-        headers: _buildHeaders(),
-        body: jsonBody,
-      );
+      final streamUrl = baseUrl.replaceAll(':generateContent', ':streamGenerateContent') + '?alt=sse';
+      final request = http.Request('POST', Uri.parse(streamUrl));
+      final headers = _buildHeaders();
+      headers.forEach((key, val) => request.headers[key] = val);
+      request.body = jsonBody;
 
-      debugPrint('=== [GEMINI RESPONSE STATUS]: ${response.statusCode} ===');
-      debugPrint('=== [GEMINI RESPONSE BODY] ===\n${response.body}\n==================================');
+      final response = await _httpClient.send(request);
+      debugPrint('=== [GEMINI STREAM STATUS]: ${response.statusCode} ===');
 
       if (response.statusCode == 200) {
-        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-        final candidates = decoded['candidates'] as List<dynamic>?;
-        if (candidates != null && candidates.isNotEmpty) {
-          final content = candidates[0]['content']['parts'][0]['text'] as String;
-          final jsonResult = jsonDecode(content) as Map<String, dynamic>;
-          return StateDelta.fromJson(jsonResult);
+        final StringBuffer fullContentBuffer = StringBuffer();
+        final StringBuffer sseLineBuffer = StringBuffer();
+        String lastEmittedNarration = '';
+
+        await for (final chunk in response.stream.transform(utf8.decoder)) {
+          sseLineBuffer.write(chunk);
+          final lines = sseLineBuffer.toString().split('\n');
+          sseLineBuffer.clear();
+          if (!chunk.endsWith('\n') && lines.isNotEmpty) {
+            sseLineBuffer.write(lines.removeLast());
+          }
+
+          for (final rawLine in lines) {
+            final line = rawLine.trim();
+            if (line.startsWith('data: ')) {
+              final jsonStr = line.substring(6).trim();
+              if (jsonStr.isEmpty || jsonStr == '[DONE]') continue;
+
+              try {
+                final Map<String, dynamic> data = jsonDecode(jsonStr);
+                final candidates = data['candidates'] as List<dynamic>?;
+                if (candidates != null && candidates.isNotEmpty) {
+                  final parts = candidates[0]['content']?['parts'] as List<dynamic>?;
+                  if (parts != null && parts.isNotEmpty) {
+                    final textPart = parts[0]['text'] as String?;
+                    if (textPart != null && textPart.isNotEmpty) {
+                      fullContentBuffer.write(textPart);
+
+                      // Extract and notify narration text deltas in real-time
+                      final currentFull = fullContentBuffer.toString();
+                      final match = RegExp(r'"narration"\s*:\s*"(.*?)"', dotAll: true).firstMatch(currentFull);
+                      if (match != null) {
+                        final extractedNarration = (match.group(1) ?? '')
+                            .replaceAll(r'\"', '"')
+                            .replaceAll(r'\n', '\n')
+                            .replaceAll(r'\\', '\\');
+                        if (extractedNarration.length > lastEmittedNarration.length) {
+                          final delta = extractedNarration.substring(lastEmittedNarration.length);
+                          lastEmittedNarration = extractedNarration;
+                          onTextDelta?.call(delta);
+                        }
+                      }
+                    }
+                  }
+                }
+              } catch (_) {
+                // Ignore partial JSON parse errors on SSE chunks
+              }
+            }
+          }
+        }
+
+        final fullContent = fullContentBuffer.toString().trim();
+        debugPrint('=== [GEMINI FULL STREAMED RESPONSE] ===\n$fullContent\n==================================');
+
+        if (fullContent.isNotEmpty) {
+          try {
+            final jsonResult = jsonDecode(fullContent) as Map<String, dynamic>;
+            return StateDelta.fromJson(jsonResult);
+          } catch (e) {
+            debugPrint('[GeminiClient] Assembled JSON parse failed: $e');
+          }
         }
       }
     } catch (e, stackTrace) {
-      debugPrint('=== [GEMINI ERROR]: $e ===\n$stackTrace');
+      debugPrint('=== [GEMINI STREAM ERROR]: $e ===\n$stackTrace');
     }
 
-    return _generateOfflineFallback(state, playerInput);
+    final fallback = _generateOfflineFallback(state, playerInput);
+    onTextDelta?.call(fallback.narration);
+    return fallback;
   }
 
   /// Summarize narrative memory when turns exceed the threshold (~10 turns).
