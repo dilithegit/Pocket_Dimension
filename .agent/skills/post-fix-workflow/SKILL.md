@@ -18,12 +18,10 @@ it as part of finishing the fix.
 2. **Build & install.** Once tests pass, confirm the physical device is connected
    (`flutter devices` or `adb devices`) — the target device is the Samsung SM A057F
    over USB. 
-   **CRITICAL SECRETS FLAG**: All build and run commands (`flutter run`, `flutter build apk`)
-   MUST explicitly include `--dart-define-from-file=secrets.json` (e.g.,
-   `flutter run -d R7AWC009KWA --dart-define-from-file=secrets.json` or
-   `flutter build apk --debug --dart-define-from-file=secrets.json --android-skip-build-dependency-validation`).
-   NEVER run `flutter run` or `flutter build` without `--dart-define-from-file=secrets.json`,
-   otherwise the app compiles with an empty API key and silently falls back to offline mode.
+   **CANONICAL BUILD SCRIPT MANDATE**: Always run `.\build.ps1` (for debug build & install) or
+   `.\build-release.ps1` (for release APK builds). NEVER run raw `flutter build` or `flutter run`
+   commands ad hoc, as raw commands risk omitting `--dart-define-from-file=secrets.json` and
+   causing the API key to evaluate as empty at runtime.
    If the device isn't connected, say so clearly and skip this step rather than silently
    failing or waiting indefinitely — commit and push can still proceed independently.
 
