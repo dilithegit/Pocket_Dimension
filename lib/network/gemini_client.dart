@@ -20,13 +20,38 @@ class GeminiClient {
   final String apiKey;
   final String baseUrl;
   final http.Client _httpClient;
+  final Future<void> Function(Duration duration)? _delayHandler;
+
+  /// Running count of HTTP 429 rate limit responses across the session.
+  static int rateLimit429Count = 0;
+
+  /// Resets the HTTP 429 rate limit encounter counter.
+  static void resetRateLimitCounter() {
+    rateLimit429Count = 0;
+  }
+
+  /// Parses retry delay in seconds from Gemini API 429 error body text.
+  static int parseRetryDelaySeconds(String responseBody) {
+    try {
+      final match = RegExp(r'retry in (\d+(?:\.\d+)?)\s*sec', caseSensitive: false).firstMatch(responseBody);
+      if (match != null) {
+        final numVal = double.tryParse(match.group(1) ?? '15');
+        if (numVal != null && numVal > 0) {
+          return numVal.ceil();
+        }
+      }
+    } catch (_) {}
+    return 15; // Default backoff delay of 15 seconds
+  }
 
   GeminiClient({
     String? apiKey,
     this.baseUrl = defaultBaseUrl,
     http.Client? httpClient,
+    Future<void> Function(Duration duration)? delayHandler,
   })  : apiKey = apiKey ?? Env.geminiApiKey,
-        _httpClient = httpClient ?? http.Client() {
+        _httpClient = httpClient ?? http.Client(),
+        _delayHandler = delayHandler {
     _initSanityCheck();
   }
 
@@ -69,23 +94,49 @@ class GeminiClient {
       'outputDimensionality': 768,
     };
 
-    try {
-      final response = await _httpClient.post(
-        Uri.parse(embedUrl),
-        headers: _buildHeaders(),
-        body: jsonEncode(body),
-      );
+    const maxRetries = 2;
+    for (int attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        final response = await _httpClient.post(
+          Uri.parse(embedUrl),
+          headers: _buildHeaders(),
+          body: jsonEncode(body),
+        );
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = jsonDecode(response.body);
-        final embeddingObj = data['embedding'] as Map<String, dynamic>?;
-        final values = embeddingObj?['values'] as List<dynamic>?;
+        if (response.statusCode == 429) {
+          rateLimit429Count++;
+          final baseDelay = parseRetryDelaySeconds(response.body);
+          final backoffSeconds = baseDelay * (1 << attempt);
+          debugPrint('[GeminiClient] 429 Quota Exceeded on embedText (Total 429 Count: $rateLimit429Count). Attempt ${attempt + 1}/${maxRetries + 1}. Backing off ${backoffSeconds}s...');
 
-        if (values != null && values.isNotEmpty) {
-          return values.map((v) => (v as num).toDouble()).toList();
+          if (attempt < maxRetries) {
+            final delayDuration = Duration(seconds: backoffSeconds);
+            final handler = _delayHandler;
+            if (handler != null) {
+              await handler(delayDuration);
+            } else {
+              await Future.delayed(delayDuration);
+            }
+            continue;
+          } else {
+            break;
+          }
         }
+
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> data = asStringKeyedMap(jsonDecode(response.body));
+          final embeddingObj = data['embedding'] as Map<String, dynamic>?;
+          final values = embeddingObj?['values'] as List<dynamic>?;
+
+          if (values != null && values.isNotEmpty) {
+            return values.map((v) => (v as num).toDouble()).toList();
+          }
+        }
+        break;
+      } catch (_) {
+        break;
       }
-    } catch (_) {}
+    }
 
     // Fallback: return 768-dim vector if API key is missing or offline
     return List.filled(768, 0.0);
@@ -213,92 +264,122 @@ Return ONLY valid JSON matching this exact structure:
       return offlineDelta;
     }
 
-    try {
-      final jsonBody = jsonEncode(payloadMap);
-      debugPrint('=== [GEMINI SSE STREAMING REQUEST] ===');
-      debugPrint('[GeminiClient] URL: ${baseUrl.replaceAll(':generateContent', ':streamGenerateContent')}?alt=sse');
+    const maxRetries = 2;
+    for (int attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        final jsonBody = jsonEncode(payloadMap);
+        debugPrint('=== [GEMINI SSE STREAMING REQUEST] (Attempt ${attempt + 1}/${maxRetries + 1}) ===');
+        debugPrint('[GeminiClient] URL: ${baseUrl.replaceAll(':generateContent', ':streamGenerateContent')}?alt=sse');
 
-      final streamUrl = baseUrl.replaceAll(':generateContent', ':streamGenerateContent') + '?alt=sse';
-      final request = http.Request('POST', Uri.parse(streamUrl));
-      final headers = _buildHeaders();
-      headers.forEach((key, val) => request.headers[key] = val);
-      request.body = jsonBody;
+        final streamUrl = baseUrl.replaceAll(':generateContent', ':streamGenerateContent') + '?alt=sse';
+        final request = http.Request('POST', Uri.parse(streamUrl));
+        final headers = _buildHeaders();
+        headers.forEach((key, val) => request.headers[key] = val);
+        request.body = jsonBody;
 
-      final response = await _httpClient.send(request);
-      debugPrint('=== [GEMINI STREAM STATUS]: ${response.statusCode} ===');
+        final response = await _httpClient.send(request);
+        debugPrint('=== [GEMINI STREAM STATUS]: ${response.statusCode} ===');
 
-      if (response.statusCode != 200) {
-        final errorBody = await response.stream.bytesToString();
-        debugPrint('[GeminiClient] Falling back due to HTTP status ${response.statusCode}: $errorBody');
-      } else {
-        final StringBuffer fullContentBuffer = StringBuffer();
-        final StringBuffer sseLineBuffer = StringBuffer();
-        String lastEmittedNarration = '';
+        if (response.statusCode == 429) {
+          rateLimit429Count++;
+          final errorBody = await response.stream.bytesToString();
+          final baseDelay = parseRetryDelaySeconds(errorBody);
+          final backoffSeconds = baseDelay * (1 << attempt);
 
-        await for (final chunk in response.stream.transform(utf8.decoder)) {
-          sseLineBuffer.write(chunk);
-          final lines = sseLineBuffer.toString().split('\n');
-          sseLineBuffer.clear();
-          if (!chunk.endsWith('\n') && lines.isNotEmpty) {
-            sseLineBuffer.write(lines.removeLast());
+          debugPrint('[GeminiClient] 429 Quota Exceeded (Total 429 Count: $rateLimit429Count). Attempt ${attempt + 1}/${maxRetries + 1}. Retrying in ${backoffSeconds}s... Error: $errorBody');
+
+          if (attempt < maxRetries) {
+            onTextDelta?.call('\n\n[The threads of fate are tangled — waiting ${backoffSeconds}s before trying again...]');
+            final delayDuration = Duration(seconds: backoffSeconds);
+            final handler = _delayHandler;
+            if (handler != null) {
+              await handler(delayDuration);
+            } else {
+              await Future.delayed(delayDuration);
+            }
+            continue;
+          } else {
+            debugPrint('[GeminiClient] Exhausted all $maxRetries retries for 429 quota limit. Falling back to offline generation.');
+            break;
           }
+        }
 
-          for (final rawLine in lines) {
-            final line = rawLine.trim();
-            if (line.startsWith('data: ')) {
-              final jsonStr = line.substring(6).trim();
-              if (jsonStr.isEmpty || jsonStr == '[DONE]') continue;
+        if (response.statusCode != 200) {
+          final errorBody = await response.stream.bytesToString();
+          debugPrint('[GeminiClient] Falling back due to HTTP status ${response.statusCode}: $errorBody');
+          break;
+        } else {
+          final StringBuffer fullContentBuffer = StringBuffer();
+          final StringBuffer sseLineBuffer = StringBuffer();
+          String lastEmittedNarration = '';
 
-              try {
-                final Map<String, dynamic> data = jsonDecode(jsonStr);
-                final candidates = data['candidates'] as List<dynamic>?;
-                if (candidates != null && candidates.isNotEmpty) {
-                  final parts = candidates[0]['content']?['parts'] as List<dynamic>?;
-                  if (parts != null && parts.isNotEmpty) {
-                    final textPart = parts[0]['text'] as String?;
-                    if (textPart != null && textPart.isNotEmpty) {
-                      fullContentBuffer.write(textPart);
+          await for (final chunk in response.stream.transform(utf8.decoder)) {
+            sseLineBuffer.write(chunk);
+            final lines = sseLineBuffer.toString().split('\n');
+            sseLineBuffer.clear();
+            if (!chunk.endsWith('\n') && lines.isNotEmpty) {
+              sseLineBuffer.write(lines.removeLast());
+            }
 
-                      final currentFull = fullContentBuffer.toString();
-                      final match = RegExp(r'"narration"\s*:\s*"(.*?)"', dotAll: true).firstMatch(currentFull);
-                      if (match != null) {
-                        final extractedNarration = (match.group(1) ?? '')
-                            .replaceAll(r'\"', '"')
-                            .replaceAll(r'\n', '\n')
-                            .replaceAll(r'\\', '\\');
-                        if (extractedNarration.length > lastEmittedNarration.length) {
-                          final delta = extractedNarration.substring(lastEmittedNarration.length);
-                          lastEmittedNarration = extractedNarration;
-                          onTextDelta?.call(delta);
+            for (final rawLine in lines) {
+              final line = rawLine.trim();
+              if (line.startsWith('data: ')) {
+                final jsonStr = line.substring(6).trim();
+                if (jsonStr.isEmpty || jsonStr == '[DONE]') continue;
+
+                try {
+                  final Map<String, dynamic> data = jsonDecode(jsonStr);
+                  final candidates = data['candidates'] as List<dynamic>?;
+                  if (candidates != null && candidates.isNotEmpty) {
+                    final parts = candidates[0]['content']?['parts'] as List<dynamic>?;
+                    if (parts != null && parts.isNotEmpty) {
+                      final textPart = parts[0]['text'] as String?;
+                      if (textPart != null && textPart.isNotEmpty) {
+                        fullContentBuffer.write(textPart);
+
+                        final currentFull = fullContentBuffer.toString();
+                        final match = RegExp(r'"narration"\s*:\s*"(.*?)"', dotAll: true).firstMatch(currentFull);
+                        if (match != null) {
+                          final extractedNarration = (match.group(1) ?? '')
+                              .replaceAll(r'\"', '"')
+                              .replaceAll(r'\n', '\n')
+                              .replaceAll(r'\\', '\\');
+                          if (extractedNarration.length > lastEmittedNarration.length) {
+                            final delta = extractedNarration.substring(lastEmittedNarration.length);
+                            lastEmittedNarration = extractedNarration;
+                            onTextDelta?.call(delta);
+                          }
                         }
                       }
                     }
                   }
+                } catch (e) {
+                  debugPrint('[GeminiClient] SSE Chunk JSON parse skipped line ($e): $jsonStr');
                 }
-              } catch (e) {
-                debugPrint('[GeminiClient] SSE Chunk JSON parse skipped line ($e): $jsonStr');
               }
             }
           }
-        }
 
-        final fullContent = fullContentBuffer.toString().trim();
-        debugPrint('=== [GEMINI FULL STREAMED RESPONSE] ===\n$fullContent\n==================================');
+          final fullContent = fullContentBuffer.toString().trim();
+          debugPrint('=== [GEMINI FULL STREAMED RESPONSE] ===\n$fullContent\n==================================');
 
-        if (fullContent.isNotEmpty) {
-          try {
-            final jsonText = fullContent.replaceAll(RegExp(r'^```json\s*'), '').replaceAll(RegExp(r'\s*```$'), '');
-            final jsonResult = jsonDecode(jsonText) as Map<String, dynamic>;
-            return StateDelta.fromJson(jsonResult);
-          } catch (e) {
-            debugPrint('[GeminiClient] Falling back due to assembled JSON parse failure: $e\nRaw Content:\n$fullContent');
+          if (fullContent.isNotEmpty) {
+            try {
+              final jsonText = fullContent.replaceAll(RegExp(r'^```json\s*'), '').replaceAll(RegExp(r'\s*```$'), '');
+              final jsonResult = jsonDecode(jsonText) as Map<String, dynamic>;
+              return StateDelta.fromJson(jsonResult);
+            } catch (e) {
+              debugPrint('[GeminiClient] Falling back due to assembled JSON parse failure: $e\nRaw Content:\n$fullContent');
+            }
+          } else {
+            debugPrint('[GeminiClient] Falling back due to empty fullContentBuffer.');
           }
-        } else {
-          debugPrint('[GeminiClient] Falling back due to empty fullContentBuffer.');
+          break;
         }
+      } catch (e, stackTrace) {
+        debugPrint('[GeminiClient] Falling back due to stream exception: $e\n$stackTrace');
+        break;
       }
-    } catch (e, stackTrace) {
-      debugPrint('[GeminiClient] Falling back due to stream exception: $e\n$stackTrace');
     }
 
     final fallback = _generateOfflineFallback(state, playerInput);
@@ -467,31 +548,60 @@ Return ONLY valid JSON.
       }
     };
 
-    try {
-      debugPrint('[GeminiClient] Sending World Weaver generation request with Seed: $varianceSeed');
-      final response = await _httpClient.post(
-        Uri.parse(baseUrl),
-        headers: _buildHeaders(),
-        body: jsonEncode(payloadMap),
-      );
+    const maxRetries = 2;
+    for (int attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        debugPrint('[GeminiClient] Sending World Weaver generation request (Attempt ${attempt + 1}/${maxRetries + 1}) with Seed: $varianceSeed');
+        final response = await _httpClient.post(
+          Uri.parse(baseUrl),
+          headers: _buildHeaders(),
+          body: jsonEncode(payloadMap),
+        );
 
-      if (response.statusCode == 200) {
-        final decoded = asStringKeyedMap(jsonDecode(response.body));
-        final candidates = decoded['candidates'] as List<dynamic>?;
-        if (candidates != null && candidates.isNotEmpty) {
-          final candidate = asStringKeyedMap(candidates[0]);
-          final content = candidate['content']['parts'][0]['text'] as String;
-          final jsonText = content.trim().replaceAll(RegExp(r'^```json\s*'), '').replaceAll(RegExp(r'\s*```$'), '');
-          final jsonResult = asStringKeyedMap(jsonDecode(jsonText));
-          final world = WorldData.fromJson(jsonResult);
-          debugPrint('[WorldWeaver Generated] Location: ${world.currentLocation} | NPCs: ${world.npcRelationships.values.map((n) => n.name).toList()}');
-          return world;
+        if (response.statusCode == 429) {
+          rateLimit429Count++;
+          final errorBody = response.body;
+          final baseDelay = parseRetryDelaySeconds(errorBody);
+          final backoffSeconds = baseDelay * (1 << attempt);
+
+          debugPrint('[GeminiClient] 429 Quota Exceeded on World Weaver (Total 429 Count: $rateLimit429Count). Attempt ${attempt + 1}/${maxRetries + 1}. Retrying in ${backoffSeconds}s... Error: $errorBody');
+
+          if (attempt < maxRetries) {
+            final delayDuration = Duration(seconds: backoffSeconds);
+            final handler = _delayHandler;
+            if (handler != null) {
+              await handler(delayDuration);
+            } else {
+              await Future.delayed(delayDuration);
+            }
+            continue;
+          } else {
+            debugPrint('[GeminiClient] World Weaver exhausted all 429 retries. Falling back to procedural world.');
+            break;
+          }
         }
-      } else {
-        debugPrint('[GeminiClient] World Weaver API status ${response.statusCode}: ${response.body}');
+
+        if (response.statusCode == 200) {
+          final decoded = asStringKeyedMap(jsonDecode(response.body));
+          final candidates = decoded['candidates'] as List<dynamic>?;
+          if (candidates != null && candidates.isNotEmpty) {
+            final candidate = asStringKeyedMap(candidates[0]);
+            final content = candidate['content']['parts'][0]['text'] as String;
+            final jsonText = content.trim().replaceAll(RegExp(r'^```json\s*'), '').replaceAll(RegExp(r'\s*```$'), '');
+            final jsonResult = asStringKeyedMap(jsonDecode(jsonText));
+            final world = WorldData.fromJson(jsonResult);
+            debugPrint('[WorldWeaver Generated] Location: ${world.currentLocation} | NPCs: ${world.npcRelationships.values.map((n) => n.name).toList()}');
+            return world;
+          }
+          break;
+        } else {
+          debugPrint('[GeminiClient] World Weaver API status ${response.statusCode}: ${response.body}');
+          break;
+        }
+      } catch (e, stackTrace) {
+        debugPrint('[GeminiClient] World Weaver Exception: $e\n$stackTrace');
+        break;
       }
-    } catch (e, stackTrace) {
-      debugPrint('[GeminiClient] World Weaver Exception: $e\n$stackTrace');
     }
 
     return _generateFallbackWorldBible(worldConceptPrompt);
