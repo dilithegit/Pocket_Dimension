@@ -1,4 +1,5 @@
 import 'package:meta/meta.dart';
+import 'json_helpers.dart';
 
 /// Item stored in the character's inventory.
 @immutable
@@ -80,7 +81,8 @@ class Character {
   factory Character.fromJson(Map<String, dynamic> json) {
     var rawInventory = json['inventory'] as List<dynamic>? ?? [];
     List<InventoryItem> parsedInventory = rawInventory
-        .map((item) => InventoryItem.fromJson(item as Map<String, dynamic>))
+        .where((item) => item is Map)
+        .map((item) => InventoryItem.fromJson(asStringKeyedMap(item)))
         .toList();
 
     return Character(

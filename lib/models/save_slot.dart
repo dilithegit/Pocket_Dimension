@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:meta/meta.dart';
 import 'game_state.dart';
+import 'json_helpers.dart';
 
 /// Database entity representing a Save Slot record in SQLite.
 @immutable
@@ -39,7 +40,7 @@ class SaveSlot {
 
   /// Parses the stored raw JSON string back into a GameState instance.
   GameState toGameState() {
-    Map<String, dynamic> parsed = jsonDecode(stateJson) as Map<String, dynamic>;
+    Map<String, dynamic> parsed = asStringKeyedMap(jsonDecode(stateJson));
     return GameState.fromJson(parsed);
   }
 

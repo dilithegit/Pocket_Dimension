@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 import 'consequence_entry.dart';
+import 'json_helpers.dart';
 
 /// NpcRelationship model accommodating Deep-Lore NPC Generation.
 /// Holds lore origin anchors, cultural archetypes, independent goals, and memory of player actions.
@@ -139,21 +140,22 @@ class WorldData {
     List<ConsequenceEntry> parsedConsequences = [];
     if (json['consequence_web'] is List) {
       parsedConsequences = (json['consequence_web'] as List<dynamic>)
-          .whereType<Map<String, dynamic>>()
-          .map((e) => ConsequenceEntry.fromJson(e))
+          .where((e) => e is Map)
+          .map((e) => ConsequenceEntry.fromJson(asStringKeyedMap(e)))
           .toList();
     }
 
     Map<String, dynamic> parsedFlags = {};
     if (json['flags'] is Map) {
-      parsedFlags = Map<String, dynamic>.from(json['flags'] as Map);
+      parsedFlags = asStringKeyedMap(json['flags']);
     }
 
     Map<String, NpcRelationship> parsedNpcs = {};
     if (json['npc_relationships'] is Map) {
-      (json['npc_relationships'] as Map<String, dynamic>).forEach((k, v) {
-        if (v is Map<String, dynamic>) {
-          parsedNpcs[k] = NpcRelationship.fromJson(k, v);
+      final npcMap = asStringKeyedMap(json['npc_relationships']);
+      npcMap.forEach((k, v) {
+        if (v is Map) {
+          parsedNpcs[k] = NpcRelationship.fromJson(k, asStringKeyedMap(v));
         }
       });
     }

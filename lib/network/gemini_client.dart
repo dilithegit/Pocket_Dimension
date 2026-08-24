@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../models/game_state.dart';
 import '../models/state_delta.dart';
 import '../models/world.dart';
+import '../models/json_helpers.dart';
 import '../config/env.dart';
 
 /// Gemini API Client for AI Dungeon Master engine with Deep-Lore NPC generation and Consequence Web memory.
@@ -475,13 +476,13 @@ Return ONLY valid JSON.
       );
 
       if (response.statusCode == 200) {
-        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+        final decoded = asStringKeyedMap(jsonDecode(response.body));
         final candidates = decoded['candidates'] as List<dynamic>?;
         if (candidates != null && candidates.isNotEmpty) {
-          final candidate = candidates[0] as Map<String, dynamic>;
+          final candidate = asStringKeyedMap(candidates[0]);
           final content = candidate['content']['parts'][0]['text'] as String;
           final jsonText = content.trim().replaceAll(RegExp(r'^```json\s*'), '').replaceAll(RegExp(r'\s*```$'), '');
-          final jsonResult = jsonDecode(jsonText) as Map<String, dynamic>;
+          final jsonResult = asStringKeyedMap(jsonDecode(jsonText));
           final world = WorldData.fromJson(jsonResult);
           debugPrint('[WorldWeaver Generated] Location: ${world.currentLocation} | NPCs: ${world.npcRelationships.values.map((n) => n.name).toList()}');
           return world;
@@ -574,9 +575,9 @@ Return ONLY valid JSON.
       ];
     }
 
-    return WorldData.fromJson({
+    return WorldData.fromJson(<String, dynamic>{
       'current_location': locationName,
-      'consequence_web': [
+      'consequence_web': <Map<String, dynamic>>[
         {
           'id': 'c_init_$suffix',
           'summary': 'Ancestral spirits whisper of an unmanifested deity walking the capital',
@@ -588,12 +589,12 @@ Return ONLY valid JSON.
           'trigger_hint': 'Ether fluctuations detected over the central spires'
         }
       ],
-      'flags': {
+      'flags': <String, dynamic>{
         'world_concept': conceptPrompt,
         'pantheon_status': 'Dormant deities watching in secret',
       },
-      'npc_relationships': {
-        for (var npc in npcs) npc['id']: npc
+      'npc_relationships': <String, dynamic>{
+        for (var npc in npcs) npc['id'] as String: npc
       }
     });
   }

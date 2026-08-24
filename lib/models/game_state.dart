@@ -2,6 +2,7 @@ import 'package:meta/meta.dart';
 import 'character.dart';
 import 'world.dart';
 import 'narrative_memory.dart';
+import 'json_helpers.dart';
 
 /// Root GameState implementing Schema Version 2 canonical shape.
 /// Single source of truth for the player's god-mode game state.
@@ -30,16 +31,15 @@ class GameState {
 
   factory GameState.fromJson(Map<String, dynamic> json) {
     int version = (json['schema_version'] as num?)?.toInt() ?? 2;
-    Map<String, dynamic> charJson = json['character'] is Map<String, dynamic>
-        ? json['character'] as Map<String, dynamic>
+    Map<String, dynamic> charJson = json['character'] is Map
+        ? asStringKeyedMap(json['character'])
         : {};
-    Map<String, dynamic> worldJson = json['world'] is Map<String, dynamic>
-        ? json['world'] as Map<String, dynamic>
+    Map<String, dynamic> worldJson = json['world'] is Map
+        ? asStringKeyedMap(json['world'])
         : {};
-    Map<String, dynamic> memoryJson =
-        json['narrative_memory'] is Map<String, dynamic>
-            ? json['narrative_memory'] as Map<String, dynamic>
-            : {};
+    Map<String, dynamic> memoryJson = json['narrative_memory'] is Map
+        ? asStringKeyedMap(json['narrative_memory'])
+        : {};
 
     return GameState(
       schemaVersion: version,

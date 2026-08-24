@@ -264,21 +264,25 @@ class GameStateManager extends ChangeNotifier {
     List<InventoryItem> updatedInventory = List.from(_state.character.inventory);
 
     // Remove items safely
-    for (var itemRem in delta.inventoryRemove) {
+    for (var itemName in delta.inventoryRemove) {
       updatedInventory.removeWhere(
-          (item) => item.id == itemRem.id || item.name == itemRem.name);
+          (item) => item.id == itemName || item.name.toLowerCase() == itemName.toLowerCase());
     }
 
     // Add items
-    for (var itemAdd in delta.inventoryAdd) {
+    for (var itemName in delta.inventoryAdd) {
       int existingIdx =
-          updatedInventory.indexWhere((item) => item.id == itemAdd.id);
+          updatedInventory.indexWhere((item) => item.id == itemName || item.name.toLowerCase() == itemName.toLowerCase());
       if (existingIdx >= 0) {
         var existing = updatedInventory[existingIdx];
         updatedInventory[existingIdx] =
-            existing.copyWith(qty: existing.qty + itemAdd.qty);
+            existing.copyWith(qty: existing.qty + 1);
       } else {
-        updatedInventory.add(itemAdd);
+        updatedInventory.add(InventoryItem(
+          id: 'item_${DateTime.now().microsecondsSinceEpoch}',
+          name: itemName,
+          qty: 1,
+        ));
       }
     }
 
