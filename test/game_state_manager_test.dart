@@ -3,6 +3,7 @@ import 'package:pocket_dimension/models/character.dart';
 import 'package:pocket_dimension/models/consequence_entry.dart';
 import 'package:pocket_dimension/database/lore_chunk_repository.dart';
 import 'package:pocket_dimension/lore/lore_ingestion_manager.dart';
+import 'package:pocket_dimension/lore/lore_retrieval_manager.dart';
 import 'package:pocket_dimension/lore/wikipedia_client.dart';
 import 'package:pocket_dimension/models/lore_chunk.dart';
 import 'package:pocket_dimension/models/world.dart';
@@ -17,6 +18,11 @@ class MockLoreChunkRepository extends LoreChunkRepository {
   @override
   Future<void> insertLoreChunks(List<LoreChunk> chunks) async {
     stored.addAll(chunks);
+  }
+
+  @override
+  Future<List<LoreChunk>> getAllForSaveSlot(int saveSlotId) async {
+    return stored.where((c) => c.saveSlotId == saveSlotId).toList();
   }
 }
 
@@ -403,6 +409,51 @@ void main() {
 
       final count = await manager.runLoreIngestion(world, 99);
       expect(count, isA<int>());
+    });
+  });
+
+  group('LoreRetrievalManager Tests', () {
+    test('computeCosineSimilarity calculates exact dot product norm ratio', () {
+      final vecA = [1.0, 0.0, 0.0];
+      final vecB = [1.0, 0.0, 0.0];
+      final vecC = [0.0, 1.0, 0.0];
+
+      expect(LoreRetrievalManager.computeCosineSimilarity(vecA, vecB), closeTo(1.0, 0.001));
+      expect(LoreRetrievalManager.computeCosineSimilarity(vecA, vecC), closeTo(0.0, 0.001));
+    });
+
+    test('retrieveGroundingContext filters chunks above similarity floor and returns formatted prompt', () async {
+      final mockRepo = MockLoreChunkRepository();
+      mockRepo.stored.addAll([
+        const LoreChunk(
+          id: 'chunk_1',
+          saveSlotId: 7,
+          sourceTitle: 'Ifa Divination Corpus',
+          sourceUrl: 'https://en.wikipedia.org/wiki/Ifa',
+          chunkText: 'Ifa is a Yoruba religion and system of divination practiced across West Africa.',
+          embedding: [1.0, 0.0, 0.0],
+        ),
+        const LoreChunk(
+          id: 'chunk_2',
+          saveSlotId: 7,
+          sourceTitle: 'Ancient Astronomy',
+          sourceUrl: 'https://en.wikipedia.org/wiki/Astronomy',
+          chunkText: 'Astronomy is a natural science that studies celestial objects.',
+          embedding: [0.0, 1.0, 0.0],
+        ),
+      ]);
+
+      final manager = LoreRetrievalManager(
+        geminiClient: GeminiClient(apiKey: ''),
+        repository: mockRepo,
+      );
+
+      final scored = await manager.retrieveGroundingContext('Ifa divination', 7, similarityFloor: 0.1);
+      expect(scored.isNotEmpty, isTrue);
+
+      final formatted = LoreRetrievalManager.formatGroundingPrompt(scored);
+      expect(formatted, contains('GROUNDING CONTEXT'));
+      expect(formatted, contains('Ifa Divination Corpus'));
     });
   });
 }

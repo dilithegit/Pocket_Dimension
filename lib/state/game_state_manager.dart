@@ -6,6 +6,7 @@ import '../models/consequence_entry.dart';
 import '../models/state_delta.dart';
 import '../models/save_slot.dart';
 import '../database/save_slot_repository.dart';
+import '../lore/lore_retrieval_manager.dart';
 import '../network/gemini_client.dart';
 
 /// GameStateManager manages in-memory GameState, enforces Schema Version 2 canonical rules,
@@ -117,16 +118,32 @@ class GameStateManager extends ChangeNotifier {
     String playerInput,
     GeminiClient client, {
     String? worldBibleContext,
+    int? saveSlotId,
   }) async {
     _isProcessing = true;
     notifyListeners();
 
     try {
+      final targetSlotId = saveSlotId ?? _activeSlotId;
+      String? groundingContextStr;
+
+      if (targetSlotId != null && targetSlotId > 0) {
+        final scoredChunks = await LoreRetrievalManager(
+          geminiClient: client,
+        ).retrieveGroundingContext(playerInput, targetSlotId);
+
+        if (scoredChunks.isNotEmpty) {
+          groundingContextStr = LoreRetrievalManager.formatGroundingPrompt(scoredChunks);
+          debugPrint('[GameStateManager] Injected ${scoredChunks.length} RAG lore chunks into system prompt.');
+        }
+      }
+
       // 1. Send prompt payload to Gemini DM Engine
       StateDelta delta = await client.processTurn(
         state: _state,
         playerInput: playerInput,
         worldBibleContext: worldBibleContext,
+        groundingContext: groundingContextStr,
       );
 
       // 2. Apply validated delta updates to in-memory state

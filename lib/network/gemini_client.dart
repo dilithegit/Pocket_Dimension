@@ -131,17 +131,21 @@ Return ONLY valid JSON matching this exact structure:
     required GameState state,
     required String playerInput,
     String? worldBibleContext,
+    String? groundingContext,
     String? customSystemPrompt,
   }) async {
     final prompt = customSystemPrompt ?? defaultSystemPrompt;
     final worldContextStr = worldBibleContext != null
         ? '\nCURRENT WORLD BIBLE CONTEXT:\n$worldBibleContext\n'
         : '';
+    final groundingStr = (groundingContext != null && groundingContext.isNotEmpty)
+        ? '\n$groundingContext\n'
+        : '';
 
     final payloadMap = {
       'system_instruction': {
         'parts': [
-          {'text': prompt + worldContextStr}
+          {'text': prompt + worldContextStr + groundingStr}
         ]
       },
       'contents': [
