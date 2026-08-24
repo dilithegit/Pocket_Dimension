@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pocket_dimension/models/character.dart';
 import 'package:pocket_dimension/models/consequence_entry.dart';
+import 'package:pocket_dimension/models/lore_chunk.dart';
 import 'package:pocket_dimension/models/world.dart';
 import 'package:pocket_dimension/models/game_state.dart';
 import 'package:pocket_dimension/models/state_delta.dart';
@@ -312,6 +313,31 @@ void main() {
       expect(delta.consequenceUpdates.first.summary, contains('Subtle ether currents'));
       expect(delta.consequenceUpdates.first.spreadLevel, equals(ConsequenceSpreadLevel.secret));
       expect(delta.consequenceUpdates.first.status, equals(ConsequenceStatus.dormant));
+    });
+  });
+
+  group('LoreChunk Model & Storage Tests', () {
+    test('LoreChunk serializes embedding doubles array to JSON and back correctly', () {
+      const chunk = LoreChunk(
+        id: 'chunk_test_1',
+        saveSlotId: 42,
+        sourceTitle: 'Yoruba Mythology',
+        sourceUrl: 'https://en.wikipedia.org/wiki/Yoruba_religion',
+        chunkText: 'Orisha are spirits sent by Olodumare to assist humanity.',
+        embedding: [0.12, -0.45, 0.99, 0.0],
+        createdTurn: 1,
+      );
+
+      final map = chunk.toMap();
+      expect(map['id'], equals('chunk_test_1'));
+      expect(map['save_slot_id'], equals(42));
+      expect(map['embedding'], isA<String>());
+
+      final reloaded = LoreChunk.fromMap(map);
+      expect(reloaded.id, equals('chunk_test_1'));
+      expect(reloaded.saveSlotId, equals(42));
+      expect(reloaded.embedding.length, equals(4));
+      expect(reloaded.embedding[2], equals(0.99));
     });
   });
 }

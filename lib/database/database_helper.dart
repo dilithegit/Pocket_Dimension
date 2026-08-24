@@ -22,8 +22,9 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -38,6 +39,34 @@ class DatabaseHelper {
         state_json TEXT NOT NULL
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE lore_chunks (
+        id TEXT PRIMARY KEY,
+        save_slot_id INTEGER NOT NULL,
+        source_title TEXT NOT NULL,
+        source_url TEXT NOT NULL,
+        chunk_text TEXT NOT NULL,
+        embedding TEXT NOT NULL,
+        created_turn INTEGER NOT NULL
+      )
+    ''');
+  }
+
+  FutureOr<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS lore_chunks (
+          id TEXT PRIMARY KEY,
+          save_slot_id INTEGER NOT NULL,
+          source_title TEXT NOT NULL,
+          source_url TEXT NOT NULL,
+          chunk_text TEXT NOT NULL,
+          embedding TEXT NOT NULL,
+          created_turn INTEGER NOT NULL
+        )
+      ''');
+    }
   }
 
   Future<void> close() async {
