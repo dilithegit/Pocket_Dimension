@@ -48,7 +48,7 @@
 - **Framework**: Flutter 3.47.1 / Dart 3.13.1
 - **State Management**: Provider (`GameStateManager extends ChangeNotifier`)
 - **Database**: SQLite (`sqflite`, `path_provider`)
-- **Network Layer**: `GeminiClient` with payload assembly, error retry logic, and memory summarization thresholding.
+- **Network Layer**: `GeminiClient` (`gemini-3.6-flash` via SSE streaming & `gemini-embedding-001` RAG) with payload assembly, error retry logic, and memory summarization thresholding.
 - **License**: MIT License
 
 ---
