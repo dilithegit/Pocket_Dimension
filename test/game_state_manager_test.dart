@@ -4,6 +4,7 @@ import 'package:pocket_dimension/models/consequence_entry.dart';
 import 'package:pocket_dimension/models/world.dart';
 import 'package:pocket_dimension/models/game_state.dart';
 import 'package:pocket_dimension/models/state_delta.dart';
+import 'package:pocket_dimension/network/gemini_client.dart';
 import 'package:pocket_dimension/state/game_state_manager.dart';
 
 void main() {
@@ -292,6 +293,25 @@ void main() {
       const errorDelta = StateDelta(narration: fallbackMsg);
       manager.applyDelta(errorDelta);
       expect(manager.state.narrativeMemory.recentTurns.last, contains(fallbackMsg));
+    });
+  });
+
+  group('GeminiClient Prompt & Payload Tests', () {
+    test('processTurn offline fallback generates valid consequenceUpdates', () async {
+      final client = GeminiClient(apiKey: '');
+      final state = GameState.initial(
+        name: 'Omnipotent Weaver',
+        origin: 'Starlight Deity',
+        startingLocation: 'Sun-Spire Citadel',
+      );
+
+      final delta = await client.processTurn(state: state, playerInput: 'I summon starfire');
+
+      expect(delta.narration, contains('summon starfire'));
+      expect(delta.consequenceUpdates.isNotEmpty, isTrue);
+      expect(delta.consequenceUpdates.first.summary, contains('Subtle ether currents'));
+      expect(delta.consequenceUpdates.first.spreadLevel, equals(ConsequenceSpreadLevel.secret));
+      expect(delta.consequenceUpdates.first.status, equals(ConsequenceStatus.dormant));
     });
   });
 }

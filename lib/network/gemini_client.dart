@@ -5,7 +5,7 @@ import '../models/state_delta.dart';
 import '../models/world.dart';
 import '../config/env.dart';
 
-/// Gemini API Client for AI Dungeon Master engine with Deep-Lore NPC generation.
+/// Gemini API Client for AI Dungeon Master engine with Deep-Lore NPC generation and Consequence Web memory.
 class GeminiClient {
   final String apiKey;
   final String baseUrl;
@@ -18,29 +18,53 @@ class GeminiClient {
   })  : apiKey = apiKey ?? Env.geminiApiKey,
         _httpClient = httpClient ?? http.Client();
 
-  /// Default System Prompt embedding DM persona, Secret God tone, and Deep-Lore NPC rules.
+  /// Default System Prompt embedding DM persona, Secret God tone, World Memory directives, and Deep-Lore NPC rules.
   static const String defaultSystemPrompt = '''
 You are the AI Dungeon Master for Pocket Dimension, an omnipotent sandbox RPG.
-The player has absolute omnipotence; physical or magical actions never fail.
-Challenge comes from emotional, societal, and world consequences, regional suspicion, and butterfly effects.
+The player character is an unmanifested deity in human guise with absolute omnipotence; physical or magical actions NEVER fail. There are NO hit points, NO mana, and NO mechanical fail states.
+
+DM PERSONA & STAKES:
+- You are an evocative narrator, not a game master rolling dice against the player.
+- Never use combat-failure or game-over language.
+- Stakes come strictly from the World Memory consequence web, relationships, societal butterfly effects, and emotional weight.
+
+WORLD MEMORY DIRECTIVE (CONSEQUENCE WEB):
+- Pocket Dimension has NO suspicion or exposure meter.
+- The world retains memory of divine actions through a network of consequences (`consequence_web`).
+- (a) CREATE a new consequence entry (`consequence_updates`) when the player performs a narratively significant act. Set a concise one-line `summary`, list `involved_npc_ids`, current `location`, `spread_level` (default "secret"), `status` (default "dormant" or "brewing"), and a `trigger_hint`.
+- (b) REFERENCE existing entries in `consequence_web` through NPC dialogue, subtle rumors, or environmental changes rather than treating turns as a blank slate.
+- (c) ESCALATE an entry's `spread_level` ("secret" -> "rumored" -> "known" -> "legendary") when the player revisits related NPCs or locations where news would naturally travel.
+- (d) EVOLVE an entry's `status` ("dormant" -> "brewing" -> "active" -> "resolved") when consequences erupt into active narrative events.
+- Cap new consequence entries at 1 or 2 per turn to keep the consequence web meaningful.
 
 DEEP-LORE NPC GENERATION RULES:
-- Every NPC must be a distinct, memorable person with their own goals independent of the player.
-- DO NOT use generic medieval fantasy tropes (e.g. generic blacksmith "Bob" or tavern keeper "Grom").
-- FISH ALL NPC ARCHETYPES, NAMES, CULTURAL ORIGINS, AND PERSONALITY TRAITS directly from the current World Bible's specific regional folklore, history, and cultural anchors.
-- When introducing or updating an NPC, provide their "lore_origin" (the folklore/cultural anchor) and "cultural_archetype".
+- Every newly introduced NPC MUST include a `lore_origin` (a real, specific folklore, historical, or mythic cultural anchor) and a `cultural_archetype`.
+- DO NOT use generic medieval fantasy tropes (e.g., generic blacksmith "Bob" or tavern keeper "Grom").
+- Fish all NPC archetypes, names, lore origins, and personality traits directly from the reference World Bible culture.
+
+REACTIVITY & NARRATIVE VARIETY:
+- Your FIRST sentence in `narration` MUST directly reference the literal content of the player's last input (`player_input`).
+- Avoid repeating metaphors, sentence openers, or phrasing used in `recent_turns`.
+- Write 2-3 paragraphs of immersive, sensory second-person narration ("You...").
 
 OUTPUT FORMAT:
 Return ONLY valid JSON matching this exact structure:
 {
-  "narration": "2-3 paragraphs of immersive second-person narration describing sensory results and mortal reactions.",
+  "narration": "2-3 paragraphs of immersive second-person narration reacting to the player's action.",
   "state_delta": {
     "flags_set": { "key": "value" },
-    "suspicion_increase": {
-      "region_name": "string",
-      "heat_increase": 0,
-      "new_rumor": "string"
-    },
+    "consequence_updates": [
+      {
+        "id": "string (new ID or existing ID to update)",
+        "summary": "string",
+        "involved_npc_ids": ["string"],
+        "location": "string",
+        "origin_turn": 1,
+        "spread_level": "secret|rumored|known|legendary",
+        "status": "dormant|brewing|active|resolved",
+        "trigger_hint": "string or null"
+      }
+    ],
     "npc_updates": [
       {
         "id": "string",
@@ -172,7 +196,7 @@ Return ONLY valid JSON matching this exact structure:
     return '$currentSummary\n[Summarized ${turnsToSummarize.length} turns]';
   }
 
-  /// Offline / Mock response generator with Deep-Lore NPC generation.
+  /// Offline / Mock response generator with Deep-Lore NPC generation and Consequence Web memory.
   StateDelta _generateOfflineFallback(GameState state, String input) {
     String lowerInput = input.toLowerCase();
     bool involvesNpc = lowerInput.contains('talk') ||
@@ -181,7 +205,6 @@ Return ONLY valid JSON matching this exact structure:
         lowerInput.contains('look');
 
     List<Map<String, dynamic>> npcUpdates = [];
-
     if (involvesNpc) {
       npcUpdates.add({
         'id': 'npc_kofi_elder',
@@ -203,11 +226,18 @@ Return ONLY valid JSON matching this exact structure:
           'You manifest your divine intent: "$input". The ambient ether pulses in response as mortals around you witness the subtle ripple of your presence.',
       'state_delta': {
         'flags_set': {'last_action': input},
-        'suspicion_increase': {
-          'region_name': state.world.currentLocation,
-          'heat_increase': 5,
-          'new_rumor': 'Whispers spread of an unseen presence altering reality.'
-        },
+        'consequence_updates': [
+          {
+            'id': 'c_offline_ripple',
+            'summary': 'Subtle ether currents rippled through the realm',
+            'involved_npc_ids': involvesNpc ? ['npc_kofi_elder'] : [],
+            'location': state.world.currentLocation,
+            'origin_turn': 1,
+            'spread_level': 'secret',
+            'status': 'dormant',
+            'trigger_hint': 'Sensitives felt a subtle ripple'
+          }
+        ],
         'npc_updates': npcUpdates,
         'inventory_add': [],
         'inventory_remove': [],
@@ -227,12 +257,18 @@ You are the World Weaver AI for Pocket Dimension.
 Given a player's world concept prompt (e.g., "African High Fantasy" or "Steampunk Coastal Empire"), generate an original, cohesive fantasy world bible matching this exact JSON shape:
 {
   "current_location": "Name of the starting capital city or prominent region",
-  "regional_suspicion": {
-    "Region Name": {
-      "heat_level": 0,
-      "rumors": ["Starting rumor 1", "Starting rumor 2"]
+  "consequence_web": [
+    {
+      "id": "c_init_1",
+      "summary": "Starting world echo or ancient secret",
+      "involved_npc_ids": ["npc_1"],
+      "location": "Starting location name",
+      "origin_turn": 0,
+      "spread_level": "secret",
+      "status": "dormant",
+      "trigger_hint": "Ancient rumors persist in secret"
     }
-  },
+  ],
   "flags": {
     "world_theme": "Concept summary",
     "world_creation_date": "Timestamp"
@@ -300,15 +336,18 @@ Return ONLY valid JSON.
 
     return WorldData.fromJson({
       'current_location': locationName,
-      'regional_suspicion': {
-        locationName: {
-          'heat_level': 5,
-          'rumors': [
-            'Ancestral spirits whisper of an unmanifested deity walking the grand market.',
-            'Guards are on high alert due to unseasonal starfall over the eastern spires.'
-          ]
+      'consequence_web': [
+        {
+          'id': 'c_init_sunfire',
+          'summary': 'Ancestral spirits whisper of an unmanifested deity walking the grand market',
+          'involved_npc_ids': ['npc_kofi_weaver'],
+          'location': locationName,
+          'origin_turn': 0,
+          'spread_level': 'secret',
+          'status': 'dormant',
+          'trigger_hint': 'Griots detect ether fluctuations over the eastern spires'
         }
-      },
+      ],
       'flags': {
         'world_concept': conceptPrompt,
         'pantheon_status': 'Dormant deities watching in secret',
