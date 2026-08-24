@@ -177,7 +177,7 @@ class GameStateManager extends ChangeNotifier {
     for (ConsequenceEntry candidate in delta.consequenceUpdates) {
       // Rule 1: New entries require a non-empty summary
       if (candidate.summary.trim().isEmpty) {
-        print(
+        debugPrint(
             '[GameStateManager] Dropped consequence update with empty summary: ${candidate.id}');
         continue;
       }
@@ -223,7 +223,7 @@ class GameStateManager extends ChangeNotifier {
       } else {
         // New entry: cap to max 2 new entries per turn
         if (newEntriesAddedThisTurn >= 2) {
-          print(
+          debugPrint(
               '[GameStateManager] Clamped extra consequence entry: ${candidate.id}');
           continue;
         }
@@ -241,7 +241,7 @@ class GameStateManager extends ChangeNotifier {
         // Validate loreOrigin & culturalArchetype requirement
         if (npc.loreOrigin.trim().isEmpty ||
             npc.culturalArchetype.trim().isEmpty) {
-          print('[GameStateManager] Dropped lore-less NPC update: ${npc.name}');
+          debugPrint('[GameStateManager] Dropped lore-less NPC update: ${npc.name}');
           continue;
         }
       }
