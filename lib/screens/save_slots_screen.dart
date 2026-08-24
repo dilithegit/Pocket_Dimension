@@ -91,6 +91,41 @@ class _SaveSlotsScreenState extends State<SaveSlotsScreen> {
     }
   }
 
+  Future<void> _handleResetAllData() async {
+    bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceElevated,
+        title: const Text('Reset All Realm Data?', style: AppTypography.uiHeader),
+        content: const Text(
+          'This will permanently delete all saved worlds and reset local SQLite data. This action cannot be undone.',
+          style: AppTypography.uiBody,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel', style: AppTypography.uiBody),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.suspicionHigh),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Reset Everything', style: AppTypography.uiBody),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await _repository.deleteAllSaveSlots();
+      await _loadSlots();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('All save slots deleted.')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -112,6 +147,27 @@ class _SaveSlotsScreenState extends State<SaveSlotsScreen> {
             icon: const Icon(Icons.refresh),
             onPressed: _loadSlots,
             tooltip: 'Refresh Save Slots',
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded, color: AppColors.inkMuted),
+            tooltip: 'Advanced Options',
+            onSelected: (value) async {
+              if (value == 'reset_all') {
+                await _handleResetAllData();
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'reset_all',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete_forever_rounded, color: AppColors.suspicionHigh, size: 18),
+                    SizedBox(width: AppSpacing.sm),
+                    Text('Reset all data', style: TextStyle(color: AppColors.suspicionHigh)),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),

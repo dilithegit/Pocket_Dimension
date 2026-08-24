@@ -68,4 +68,10 @@ class SaveSlotRepository {
       whereArgs: [id],
     );
   }
+
+  /// Delete all save slots from SQLite.
+  Future<int> deleteAllSaveSlots() async {
+    final db = await dbHelper.database;
+    return await db.delete('save_slots');
+  }
 }
