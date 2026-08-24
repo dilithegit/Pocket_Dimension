@@ -390,9 +390,11 @@ Return ONLY valid JSON matching this exact structure:
       return _generateFallbackWorldBible(worldConceptPrompt);
     }
 
+    final varianceSeed = DateTime.now().microsecondsSinceEpoch;
+
     const systemPrompt = '''
 You are the World Weaver AI for Pocket Dimension.
-Given a player's world concept prompt (e.g., "African High Fantasy" or "Steampunk Coastal Empire"), generate an original, cohesive fantasy world bible matching this exact JSON shape:
+Given a player's world concept prompt (e.g., "African High Fantasy", "Steampunk Coastal Empire", "Mesoamerican Sun Dynasty"), perform grounded research and generate an original, cohesive fantasy world bible matching this exact JSON shape:
 {
   "current_location": "Name of the starting capital city or prominent region",
   "consequence_web": [
@@ -428,6 +430,12 @@ Given a player's world concept prompt (e.g., "African High Fantasy" or "Steampun
     }
   }
 }
+
+PROPER NOUN VARIETY & ANTI-FLATTENING DIRECTIVE:
+- Generate COMPLETELY DISTINCT, highly specific, authentic proper nouns for cities, landmarks, and NPCs.
+- NEVER reuse generic placeholder names like "Commander Zoya", "Kofi", "Kosi", "Sun-Citadel", or "Sovereign Haven".
+- Base all proper nouns and cultural archetypes directly on authentic folklore, historical epics, and real mythic anchors of the requested theme.
+
 Return ONLY valid JSON.
 ''';
 
@@ -438,7 +446,12 @@ Return ONLY valid JSON.
       'contents': [
         {
           'role': 'user',
-          'parts': [{'text': 'Generate a World Bible for concept: $worldConceptPrompt'}]
+          'parts': [
+            {
+              'text':
+                  'Synthesize a unique, deeply grounded World Bible for concept: "$worldConceptPrompt" [Variance Seed: $varianceSeed].'
+            }
+          ]
         }
       ],
       'generationConfig': {
@@ -447,6 +460,7 @@ Return ONLY valid JSON.
     };
 
     try {
+      debugPrint('[GeminiClient] Sending World Weaver generation request with Seed: $varianceSeed');
       final response = await _httpClient.post(
         Uri.parse(baseUrl),
         headers: _buildHeaders(),
@@ -457,43 +471,38 @@ Return ONLY valid JSON.
         final decoded = jsonDecode(response.body) as Map<String, dynamic>;
         final candidates = decoded['candidates'] as List<dynamic>?;
         if (candidates != null && candidates.isNotEmpty) {
-          final content = candidates[0]['content']['parts'][0]['text'] as String;
-          final jsonResult = jsonDecode(content) as Map<String, dynamic>;
-          return WorldData.fromJson(jsonResult);
+          final candidate = candidates[0] as Map<String, dynamic>;
+          final content = candidate['content']['parts'][0]['text'] as String;
+          final jsonText = content.trim().replaceAll(RegExp(r'^```json\s*'), '').replaceAll(RegExp(r'\s*```$'), '');
+          final jsonResult = jsonDecode(jsonText) as Map<String, dynamic>;
+          final world = WorldData.fromJson(jsonResult);
+          debugPrint('[WorldWeaver Generated] Location: ${world.currentLocation} | NPCs: ${world.npcRelationships.values.map((n) => n.name).toList()}');
+          return world;
         }
+      } else {
+        debugPrint('[GeminiClient] World Weaver API status ${response.statusCode}: ${response.body}');
       }
-    } catch (_) {}
+    } catch (e, stackTrace) {
+      debugPrint('[GeminiClient] World Weaver Exception: $e\n$stackTrace');
+    }
 
     return _generateFallbackWorldBible(worldConceptPrompt);
   }
 
   WorldData _generateFallbackWorldBible(String conceptPrompt) {
-    String locationName = conceptPrompt.toLowerCase().contains('african')
-        ? 'Sun-Citadel of Kemet-Asili'
-        : 'Sovereign Haven of $conceptPrompt';
+    final lower = conceptPrompt.toLowerCase();
+    final seed = DateTime.now().microsecondsSinceEpoch;
+    final suffix = seed % 1000;
 
-    return WorldData.fromJson({
-      'current_location': locationName,
-      'consequence_web': [
+    String locationName;
+    List<Map<String, dynamic>> npcs;
+
+    if (lower.contains('african') || lower.contains('yoruba') || lower.contains('sahel')) {
+      locationName = 'Sun-Citadel of Kemet-Asili #$suffix';
+      npcs = [
         {
-          'id': 'c_init_sunfire',
-          'summary': 'Ancestral spirits whisper of an unmanifested deity walking the grand market',
-          'involved_npc_ids': ['npc_kofi_weaver'],
-          'location': locationName,
-          'origin_turn': 0,
-          'spread_level': 'secret',
-          'status': 'dormant',
-          'trigger_hint': 'Griots detect ether fluctuations over the eastern spires'
-        }
-      ],
-      'flags': {
-        'world_concept': conceptPrompt,
-        'pantheon_status': 'Dormant deities watching in secret',
-      },
-      'npc_relationships': {
-        'npc_kofi_weaver': {
-          'id': 'npc_kofi_weaver',
-          'name': 'Kofi the Griot',
+          'id': 'npc_kofi_$suffix',
+          'name': 'Kofi the Griot of Grove $suffix',
           'role': 'Keeper of oral traditions',
           'lore_origin': 'Sahelian High Empire Epic Songs',
           'cultural_archetype': 'Elder Memory Keeper',
@@ -502,23 +511,82 @@ Return ONLY valid JSON.
           'secret': 'Carries a shard of the original sunstone',
           'trust': 2,
           'disposition': 'neutral',
-          'known_facts': ['Knows the market alleys better than the royal guards'],
+          'known_facts': ['Knows the market alleys better than royal guards'],
           'last_seen_turn': 0,
         },
-        'npc_zoya_captain': {
-          'id': 'npc_zoya_captain',
-          'name': 'Commander Zoya',
-          'role': 'Citadel Gate Warden',
-          'lore_origin': 'Swahili Coastal City-State Navy',
-          'cultural_archetype': 'Disciplined Fortress Guard',
-          'personality_tags': ['tactical', 'unyielding'],
-          'goal': 'Expose corrupt merchants smuggling forbidden reliquaries',
-          'secret': 'Owes a blood debt to an unknown benefactor',
-          'trust': 0,
+        {
+          'id': 'npc_aminata_$suffix',
+          'name': 'Queen Mother Aminata of Spire $suffix',
+          'role': 'Royal Counselor',
+          'lore_origin': 'Mali Empire Matriarchal Heritage',
+          'cultural_archetype': 'Perceptive Royal Regent',
+          'personality_tags': ['tactical', 'regal', 'unforgiving'],
+          'goal': 'Uncover foreign spies attempting to siphon sacred gold',
+          'secret': 'Consults ancient river spirits at midnight',
+          'trust': 1,
           'disposition': 'wary',
-          'known_facts': ['Noticed unusual ether fluctuations at midnight'],
+          'known_facts': ['Noticed unusual celestial shifts'],
           'last_seen_turn': 0,
         }
+      ];
+    } else if (lower.contains('greek') || lower.contains('hellenic') || lower.contains('sparta')) {
+      locationName = 'Aegis Spire of Corinthian Heights #$suffix';
+      npcs = [
+        {
+          'id': 'npc_oracle_$suffix',
+          'name': 'Pythia Lysandra of Temple $suffix',
+          'role': 'High Oracle',
+          'lore_origin': 'Delphic Pythian Prophecies',
+          'cultural_archetype': 'Seer of the Sacred Flame',
+          'personality_tags': ['mystical', 'cryptic', 'solemn'],
+          'goal': 'Interpret divine omens before the solstice war',
+          'secret': 'Heard whispers from an unmanifested deity',
+          'trust': 2,
+          'disposition': 'neutral',
+          'known_facts': ['Interpreted divine thunderbolts over the harbor'],
+          'last_seen_turn': 0,
+        }
+      ];
+    } else {
+      locationName = 'Sovereign Haven of $conceptPrompt #$suffix';
+      npcs = [
+        {
+          'id': 'npc_warden_$suffix',
+          'name': 'High Warden Valerius #$suffix',
+          'role': 'Grand Custodian',
+          'lore_origin': 'Ancient Realm Chronicles',
+          'cultural_archetype': 'Disciplined Fortress Warden',
+          'personality_tags': ['vigilant', 'honorable'],
+          'goal': 'Maintain order across the realm',
+          'secret': 'Guards a forgotten gateway',
+          'trust': 1,
+          'disposition': 'neutral',
+          'known_facts': ['Monitors city entrances'],
+          'last_seen_turn': 0,
+        }
+      ];
+    }
+
+    return WorldData.fromJson({
+      'current_location': locationName,
+      'consequence_web': [
+        {
+          'id': 'c_init_$suffix',
+          'summary': 'Ancestral spirits whisper of an unmanifested deity walking the capital',
+          'involved_npc_ids': [npcs.first['id']],
+          'location': locationName,
+          'origin_turn': 0,
+          'spread_level': 'secret',
+          'status': 'dormant',
+          'trigger_hint': 'Ether fluctuations detected over the central spires'
+        }
+      ],
+      'flags': {
+        'world_concept': conceptPrompt,
+        'pantheon_status': 'Dormant deities watching in secret',
+      },
+      'npc_relationships': {
+        for (var npc in npcs) npc['id']: npc
       }
     });
   }
