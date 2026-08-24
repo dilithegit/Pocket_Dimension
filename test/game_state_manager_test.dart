@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pocket_dimension/models/character.dart';
 import 'package:pocket_dimension/models/consequence_entry.dart';
+import 'package:pocket_dimension/lore/wikipedia_client.dart';
 import 'package:pocket_dimension/models/lore_chunk.dart';
 import 'package:pocket_dimension/models/world.dart';
 import 'package:pocket_dimension/models/game_state.dart';
@@ -338,6 +339,27 @@ void main() {
       expect(reloaded.saveSlotId, equals(42));
       expect(reloaded.embedding.length, equals(4));
       expect(reloaded.embedding[2], equals(0.99));
+    });
+  });
+
+  group('WikipediaClient Chunking Tests', () {
+    test('chunkText splits text into ~200 word chunks with ~20 word overlap', () {
+      final List<String> words = List.generate(450, (i) => 'word$i');
+      final String sampleText = words.join(' ');
+
+      final chunks = WikipediaClient.chunkText(sampleText, targetChunkWords: 200, overlapWords: 20);
+
+      expect(chunks.length, equals(3));
+      final chunk0Words = chunks[0].split(' ');
+      final chunk1Words = chunks[1].split(' ');
+
+      expect(chunk0Words.length, equals(200));
+      expect(chunk0Words.first, equals('word0'));
+      expect(chunk0Words.last, equals('word199'));
+
+      // Check overlap between chunk 0 and chunk 1 (step = 180, so chunk 1 starts at word180)
+      expect(chunk1Words.first, equals('word180'));
+      expect(chunk0Words.sublist(180, 200), equals(chunk1Words.sublist(0, 20)));
     });
   });
 }
