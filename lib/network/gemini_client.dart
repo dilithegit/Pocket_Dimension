@@ -206,6 +206,7 @@ Return ONLY valid JSON matching this exact structure:
     };
 
     if (apiKey.isEmpty) {
+      debugPrint('[GeminiClient] Falling back to offline generation: API key is empty.');
       final offlineDelta = _generateOfflineFallback(state, playerInput);
       onTextDelta?.call(offlineDelta.narration);
       return offlineDelta;
@@ -214,6 +215,7 @@ Return ONLY valid JSON matching this exact structure:
     try {
       final jsonBody = jsonEncode(payloadMap);
       debugPrint('=== [GEMINI SSE STREAMING REQUEST] ===');
+      debugPrint('[GeminiClient] URL: ${baseUrl.replaceAll(':generateContent', ':streamGenerateContent')}?alt=sse');
 
       final streamUrl = baseUrl.replaceAll(':generateContent', ':streamGenerateContent') + '?alt=sse';
       final request = http.Request('POST', Uri.parse(streamUrl));
@@ -224,7 +226,10 @@ Return ONLY valid JSON matching this exact structure:
       final response = await _httpClient.send(request);
       debugPrint('=== [GEMINI STREAM STATUS]: ${response.statusCode} ===');
 
-      if (response.statusCode == 200) {
+      if (response.statusCode != 200) {
+        final errorBody = await response.stream.bytesToString();
+        debugPrint('[GeminiClient] Falling back due to HTTP status ${response.statusCode}: $errorBody');
+      } else {
         final StringBuffer fullContentBuffer = StringBuffer();
         final StringBuffer sseLineBuffer = StringBuffer();
         String lastEmittedNarration = '';
@@ -253,7 +258,6 @@ Return ONLY valid JSON matching this exact structure:
                     if (textPart != null && textPart.isNotEmpty) {
                       fullContentBuffer.write(textPart);
 
-                      // Extract and notify narration text deltas in real-time
                       final currentFull = fullContentBuffer.toString();
                       final match = RegExp(r'"narration"\s*:\s*"(.*?)"', dotAll: true).firstMatch(currentFull);
                       if (match != null) {
@@ -270,8 +274,8 @@ Return ONLY valid JSON matching this exact structure:
                     }
                   }
                 }
-              } catch (_) {
-                // Ignore partial JSON parse errors on SSE chunks
+              } catch (e) {
+                debugPrint('[GeminiClient] SSE Chunk JSON parse skipped line ($e): $jsonStr');
               }
             }
           }
@@ -282,15 +286,18 @@ Return ONLY valid JSON matching this exact structure:
 
         if (fullContent.isNotEmpty) {
           try {
-            final jsonResult = jsonDecode(fullContent) as Map<String, dynamic>;
+            final jsonText = fullContent.replaceAll(RegExp(r'^```json\s*'), '').replaceAll(RegExp(r'\s*```$'), '');
+            final jsonResult = jsonDecode(jsonText) as Map<String, dynamic>;
             return StateDelta.fromJson(jsonResult);
           } catch (e) {
-            debugPrint('[GeminiClient] Assembled JSON parse failed: $e');
+            debugPrint('[GeminiClient] Falling back due to assembled JSON parse failure: $e\nRaw Content:\n$fullContent');
           }
+        } else {
+          debugPrint('[GeminiClient] Falling back due to empty fullContentBuffer.');
         }
       }
     } catch (e, stackTrace) {
-      debugPrint('=== [GEMINI STREAM ERROR]: $e ===\n$stackTrace');
+      debugPrint('[GeminiClient] Falling back due to stream exception: $e\n$stackTrace');
     }
 
     final fallback = _generateOfflineFallback(state, playerInput);
