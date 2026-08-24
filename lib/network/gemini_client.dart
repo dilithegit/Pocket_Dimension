@@ -10,10 +10,10 @@ import '../config/env.dart';
 /// Gemini API Client for AI Dungeon Master engine with Deep-Lore NPC generation and Consequence Web memory.
 class GeminiClient {
   /// Default Gemini Flash model string for generation endpoints.
-  /// MIGRATION NOTE (2026-08-24): Migrated from deprecated `gemini-2.5-flash` to `gemini-3.6-flash`.
-  /// REMINDER: Check Google's Gemini API model deprecation notices regularly before assuming a
-  /// hardcoded model string will keep working long-term (second forced model deprecation migration).
-  static const String defaultModelName = 'gemini-3.6-flash';
+  /// MIGRATION NOTE (2026-08-25): Migrated to `gemini-3.5-flash-lite` to move off the 20 RPD free-tier cap
+  /// onto the 500 RPD Lite tier while preserving full SSE streaming (`streamGenerateContent`) and JSON mode support.
+  /// DO NOT revert to 3.6-flash without noting the 20 RPD quota limitation.
+  static const String defaultModelName = 'gemini-3.5-flash-lite';
   static const String defaultBaseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models/$defaultModelName:generateContent';
 

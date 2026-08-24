@@ -10,6 +10,12 @@ live. Every change here must preserve both the narrative tone and the strict out
 schema — a prompt tweak that improves prose but breaks JSON parsing is a regression,
 not an improvement.
 
+## Active DM Model & Free-Tier Quota Rationale
+
+- **Active Model**: `gemini-3.5-flash-lite` (specified in `lib/network/gemini_client.dart` via `defaultModelName`).
+- **Quota Rationale**: Migrated from `gemini-3.6-flash` to `gemini-3.5-flash-lite` to move off the **20 Requests-Per-Day (RPD)** free-tier rate limit onto the **500 RPD** free-tier limit. `gemini-3.5-flash-lite` fully supports SSE streaming (`streamGenerateContent`) and JSON mode output shapes (`application/json`).
+- **DO NOT** revert `defaultModelName` to `gemini-3.6-flash` or `gemini-2.5-flash` for "narration quality" reasons without considering the 20 RPD cap, which quickly triggers HTTP 429 errors during multi-turn testing.
+
 ## System prompt structure (required sections, in this order)
 
 1. **Persona & tone** — the DM is a narrator, not a game master rolling dice

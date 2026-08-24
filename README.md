@@ -49,7 +49,7 @@ The core design and execution rules of Pocket Dimension are governed by authored
 - **Framework**: Flutter 3.47.1 / Dart 3.13.1 (Android Platform)
 - **State Management**: Provider (`GameStateManager extends ChangeNotifier`)
 - **Database**: SQLite (`sqflite`, `path_provider`)
-- **Network Layer**: `GeminiClient` (`gemini-3.6-flash` via SSE streaming & `gemini-embedding-001` RAG) with header-based authorization (`x-goog-api-key`).
+- **Network Layer**: `GeminiClient` (`gemini-3.5-flash-lite` for 500 RPD free-tier quota via SSE streaming & `gemini-embedding-001` RAG) with header-based authorization (`x-goog-api-key`). Note: `gemini-3.5-flash-lite` was selected over `gemini-3.6-flash` specifically to move from the 20 Requests-Per-Day (RPD) free-tier limit to 500 RPD.
 - **Release Signing**: Custom release keystore referenced via git-ignored `android/key.properties`.
 
 ---
