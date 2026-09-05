@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../models/character.dart';
 import '../models/game_state.dart';
 import '../models/state_delta.dart';
 import '../models/world.dart';
@@ -707,5 +708,120 @@ Return ONLY valid JSON.
         for (var npc in npcs) npc['id'] as String: npc
       }
     });
+  }
+
+  /// Generates the Opening World Briefing (turn zero) when character creation completes.
+  /// Uses a distinct system prompt per gemini-dm-prompting skill instructions.
+  Future<String> generateOpeningBriefing({
+    required WorldData world,
+    required Character character,
+  }) async {
+    if (apiKey.isEmpty) {
+      debugPrint('[GeminiClient] Falling back to offline opening briefing: API key is empty.');
+      return _generateOfflineOpeningBriefing(world, character);
+    }
+
+    final conceptStr = (world.flags['world_concept'] ?? 'Omnipotent RPG Realm').toString();
+
+    final systemPrompt = '''
+You are the Dungeon Master for Pocket Dimension, an omnipotent God-Mode AI RPG engine.
+The player character is an unmanifested deity who has just assumed a mortal guise in the world.
+
+WORLD BIBLE CONTEXT:
+Location: ${world.currentLocation}
+World Concept: $conceptStr
+Living NPCs: ${world.npcRelationships.values.map((n) => '${n.name} (${n.role}, ${n.culturalArchetype})').join('; ')}
+
+PLAYER CHARACTER GUISE:
+Name: ${character.name}
+Origin/Guise: ${character.origin}
+Starting Relics: ${character.inventory.map((i) => i.name).join(', ')}
+
+INSTRUCTIONS FOR OPENING WORLD BRIEFING:
+1. Establish the opening atmosphere and setting in the specific location: "${world.currentLocation}".
+2. Concretely describe the character's arrival or manifestation in their mortal guise: "${character.origin}".
+3. Weave in atmospheric details from the world's culture and surrounding environment.
+4. DO NOT ask "What do you do?" or present an explicit question or choice at the end. End on an evocative, open-ended atmospheric narrative note.
+5. Provide pure prose text with NO JSON formatting, NO code blocks, and NO markdown headers.
+''';
+
+    const maxRetries = 2;
+    for (int attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        final payloadMap = {
+          'system_instruction': {
+            'parts': [
+              {'text': systemPrompt}
+            ]
+          },
+          'contents': [
+            {
+              'role': 'user',
+              'parts': [
+                {'text': 'Generate the opening world briefing narration for the player\'s arrival.'}
+              ]
+            }
+          ],
+          'generationConfig': {
+            'temperature': 0.85,
+            'topP': 0.95,
+            'maxOutputTokens': 400,
+          }
+        };
+
+        debugPrint('[GeminiClient] Sending Opening Briefing request (Attempt ${attempt + 1}/${maxRetries + 1})...');
+        final response = await _httpClient.post(
+          Uri.parse(baseUrl),
+          headers: _buildHeaders(),
+          body: jsonEncode(payloadMap),
+        );
+
+        if (response.statusCode == 429) {
+          rateLimit429Count++;
+          final baseDelay = parseRetryDelaySeconds(response.body);
+          final backoffSeconds = baseDelay * (1 << attempt);
+          debugPrint('[GeminiClient] 429 Quota Exceeded on Opening Briefing (Total 429 Count: $rateLimit429Count). Attempt ${attempt + 1}/${maxRetries + 1}. Retrying in ${backoffSeconds}s... Error: ${response.body}');
+
+          if (attempt < maxRetries) {
+            final delayDuration = Duration(seconds: backoffSeconds);
+            final handler = _delayHandler;
+            if (handler != null) {
+              await handler(delayDuration);
+            } else {
+              await Future.delayed(delayDuration);
+            }
+            continue;
+          } else {
+            debugPrint('[GeminiClient] Opening Briefing exhausted all 429 retries. Falling back to offline briefing.');
+            break;
+          }
+        }
+
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> data = jsonDecode(response.body);
+          final candidates = data['candidates'] as List<dynamic>?;
+          if (candidates != null && candidates.isNotEmpty) {
+            final parts = candidates[0]['content']?['parts'] as List<dynamic>?;
+            if (parts != null && parts.isNotEmpty) {
+              final text = parts[0]['text'] as String?;
+              if (text != null && text.trim().isNotEmpty) {
+                return text.trim();
+              }
+            }
+          }
+        } else {
+          debugPrint('[GeminiClient] Opening Briefing failed with status ${response.statusCode}: ${response.body}');
+        }
+      } catch (e, stackTrace) {
+        debugPrint('[GeminiClient] Opening Briefing Exception: $e\n$stackTrace');
+        break;
+      }
+    }
+
+    return _generateOfflineOpeningBriefing(world, character);
+  }
+
+  String _generateOfflineOpeningBriefing(WorldData world, Character character) {
+    return 'The ether of ${world.currentLocation} thickens as your unmanifested divine intent coalesces into physical form. Assuming the guise of ${character.origin}, you step into the sacred precinct under an ancient sky. Surrounding mortals carry on with their daily rhythms, unaware that a deity walks among them in the form of ${character.name}.';
   }
 }

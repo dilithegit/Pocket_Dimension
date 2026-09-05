@@ -36,6 +36,28 @@ class _ChatScreenState extends State<ChatScreen> {
   String _streamingNarration = '';
   Timer? _streamTimer;
 
+  bool _hasRevealedInitialBriefing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAndRevealInitialBriefing();
+    });
+  }
+
+  void _checkAndRevealInitialBriefing() {
+    if (_hasRevealedInitialBriefing) return;
+    final manager = context.read<GameStateManager>();
+    final turns = manager.state.narrativeMemory.recentTurns;
+
+    if (turns.length == 1 && turns.first.startsWith('DM:')) {
+      _hasRevealedInitialBriefing = true;
+      String briefingText = turns.first.substring(3).trim();
+      _animateTextReveal(briefingText);
+    }
+  }
+
   @override
   void dispose() {
     _streamTimer?.cancel();
@@ -399,8 +421,14 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.all(AppSpacing.md),
-                    itemCount: state.narrativeMemory.recentTurns.length + (_isStreaming ? 1 : 0),
+                    itemCount: (_isStreaming && state.narrativeMemory.recentTurns.length == 1)
+                        ? 1
+                        : state.narrativeMemory.recentTurns.length + (_isStreaming ? 1 : 0),
                     itemBuilder: (context, index) {
+                      if (_isStreaming && state.narrativeMemory.recentTurns.length == 1) {
+                        return _buildDmNarrationBubble(_streamingNarration, isStreaming: true);
+                      }
+
                       if (_isStreaming && index == state.narrativeMemory.recentTurns.length) {
                         return _buildDmNarrationBubble(_streamingNarration, isStreaming: true);
                       }

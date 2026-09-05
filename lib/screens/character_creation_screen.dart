@@ -5,6 +5,7 @@ import '../theme/app_typography.dart';
 import '../theme/app_spacing.dart';
 import '../models/character.dart';
 import '../models/state_delta.dart';
+import '../network/gemini_client.dart';
 import '../state/game_state_manager.dart';
 
 /// Character Creation Screen — God-Mode setup collecting character name, physical/conceptual guise (origin),
@@ -32,6 +33,8 @@ class _CharacterCreationScreenState extends State<CharacterCreationScreen> {
     const InventoryItem(id: 'item_1', name: 'Chronicle of Lost Songs', qty: 1),
     const InventoryItem(id: 'item_2', name: 'Aether-Infused Ring', qty: 1),
   ];
+
+  bool _isGeneratingBriefing = false;
 
   @override
   void dispose() {
@@ -61,12 +64,18 @@ class _CharacterCreationScreenState extends State<CharacterCreationScreen> {
     });
   }
 
-  void _handleSubmit() {
+  Future<void> _handleSubmit() async {
+    if (_isGeneratingBriefing) return;
+
     String name = _nameController.text.trim();
     String origin = _originController.text.trim();
 
     if (name.isEmpty) name = 'Nameless Deity';
     if (origin.isEmpty) origin = 'Unmapped Guise';
+
+    setState(() {
+      _isGeneratingBriefing = true;
+    });
 
     final manager = context.read<GameStateManager>();
 
@@ -79,14 +88,24 @@ class _CharacterCreationScreenState extends State<CharacterCreationScreen> {
 
     manager.updateCharacter(newChar);
 
-    // Apply initial manifestation narration delta
-    manager.applyDelta(
-      StateDelta(
-        narration: 'You manifest as "$name", assuming the guise of "$origin" in ${manager.state.world.currentLocation}.',
-      ),
+    // Generate Opening World Briefing via Gemini Client
+    final client = GeminiClient();
+    String briefing = await client.generateOpeningBriefing(
+      world: manager.state.world,
+      character: newChar,
     );
 
-    widget.onCharacterCreated();
+    // Store opening briefing as first entry in NarrativeMemory.recentTurns
+    manager.applyDelta(
+      StateDelta(narration: briefing),
+    );
+
+    if (mounted) {
+      setState(() {
+        _isGeneratingBriefing = false;
+      });
+      widget.onCharacterCreated();
+    }
   }
 
   @override
@@ -225,10 +244,19 @@ class _CharacterCreationScreenState extends State<CharacterCreationScreen> {
                   backgroundColor: AppColors.accent,
                   foregroundColor: AppColors.background,
                 ),
-                onPressed: _handleSubmit,
-                icon: const Icon(Icons.play_arrow_rounded),
+                onPressed: _isGeneratingBriefing ? null : _handleSubmit,
+                icon: _isGeneratingBriefing
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.background,
+                        ),
+                      )
+                    : const Icon(Icons.play_arrow_rounded),
                 label: Text(
-                  'Enter Realm as Deity',
+                  _isGeneratingBriefing ? 'Weaving Opening World Briefing...' : 'Enter Realm as Deity',
                   style: AppTypography.uiHeader.copyWith(
                     color: AppColors.background,
                     fontSize: 16,
