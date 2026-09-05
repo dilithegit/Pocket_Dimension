@@ -10,6 +10,7 @@ import '../network/gemini_client.dart';
 import '../offline_story/story_engine.dart';
 import '../offline_story/story_graph.dart';
 import '../state/game_state_manager.dart';
+import '../widgets/custom_ui_components.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
@@ -184,12 +185,12 @@ class _ChatScreenState extends State<ChatScreen> {
       return StateDelta.fromJson({
         'narration': 'You approach Oluwo Ifa-Tayo by the sacred Osogbo shrine. He senses your unearthly authority and bows low: "Unseen deity, the Odu verses predicted your manifestation in $loc. What wisdom do you bring?"',
         'state_delta': {
-          'flags_set': {'met_oluwo': true},
+          'flags_set': const {'met_oluwo': true},
           'consequence_updates': [
             {
               'id': 'c_met_oluwo',
               'summary': 'Met Oluwo Ifa-Tayo by the sacred shrine',
-              'involved_npc_ids': ['npc_oluwo'],
+              'involved_npc_ids': const ['npc_oluwo'],
               'location': loc,
               'origin_turn': 1,
               'spread_level': 'rumored',
@@ -198,7 +199,7 @@ class _ChatScreenState extends State<ChatScreen> {
             }
           ],
           'npc_updates': [
-            {
+            const {
               'id': 'npc_oluwo',
               'name': 'Oluwo Ifa-Tayo',
               'role': 'High Memory Keeper of Osogbo',
@@ -217,12 +218,12 @@ class _ChatScreenState extends State<ChatScreen> {
       return StateDelta.fromJson({
         'narration': 'You unleash your divine will into the ether. A surge of ancestral starfire crackles across the spires of $loc. Mortals drop to their knees in awe and terror as the sky glows gold.',
         'state_delta': {
-          'flags_set': {'starfire_manifested': true},
+          'flags_set': const {'starfire_manifested': true},
           'consequence_updates': [
             {
               'id': 'c_starfire_flared',
               'summary': 'Celestial starfire flared over the citadel spires',
-              'involved_npc_ids': [],
+              'involved_npc_ids': const [],
               'location': loc,
               'origin_turn': 1,
               'spread_level': 'known',
@@ -236,8 +237,8 @@ class _ChatScreenState extends State<ChatScreen> {
       return StateDelta.fromJson({
         'narration': 'You inspect the sacred coral shrine of Olokun. Beneath the ancient bronze relief, you discover a glowing Olokun Coral Amulet pulsing with ocean ether.',
         'state_delta': {
-          'flags_set': {'found_olokun_relic': true},
-          'inventory_add': [
+          'flags_set': const {'found_olokun_relic': true},
+          'inventory_add': const [
             {'id': 'relic_olokun_coral', 'name': 'Olokun Coral Amulet', 'qty': 1}
           ]
         }
@@ -251,7 +252,7 @@ class _ChatScreenState extends State<ChatScreen> {
             {
               'id': 'c_ether_ripple',
               'summary': 'Subtle ether currents rippled through the realm',
-              'involved_npc_ids': [],
+              'involved_npc_ids': const [],
               'location': loc,
               'origin_turn': 1,
               'spread_level': 'secret',
@@ -310,44 +311,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(state.world.currentLocation, style: AppTypography.uiHeader),
-            Text(
-              'Guise: ${state.character.origin}',
-              style: AppTypography.uiCaption.copyWith(color: AppColors.accent),
-            ),
-          ],
-        ),
-        backgroundColor: AppColors.surface,
+      appBar: IlluminatedHeaderBar(
+        title: state.world.currentLocation,
+        subtitle: 'Guise: ${state.character.origin}',
         actions: [
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.accent.withValues(alpha: 0.15),
-              borderRadius: AppSpacing.borderRadiusFull,
-              border: Border.all(color: AppColors.accent.withValues(alpha: 0.6), width: 1),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.hub_outlined, size: 14, color: AppColors.accent),
-                const SizedBox(width: 4),
-                Text(
-                  'Memories: ${state.world.consequenceWeb.length}',
-                  style: AppTypography.uiCaption.copyWith(
-                    color: AppColors.accent,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.save_outlined),
+          GoldIconButton(
+            icon: Icons.save_outlined,
             onPressed: () async {
               await manager.saveToSlot(repository: _repository);
               if (mounted) {
@@ -358,13 +327,15 @@ class _ChatScreenState extends State<ChatScreen> {
             },
             tooltip: 'Save Game',
           ),
+          const SizedBox(width: AppSpacing.xs),
           Builder(
-            builder: (ctx) => IconButton(
-              icon: const Icon(Icons.menu_book_rounded, color: AppColors.accent),
+            builder: (ctx) => GoldIconButton(
+              icon: Icons.menu_book_rounded,
               onPressed: () => Scaffold.of(ctx).openEndDrawer(),
               tooltip: 'Open World Sheet Drawer',
             ),
           ),
+          const SizedBox(width: AppSpacing.xs),
         ],
       ),
 
@@ -564,16 +535,8 @@ class _ChatScreenState extends State<ChatScreen> {
           children: actions.map((label) {
             return Padding(
               padding: const EdgeInsets.only(right: AppSpacing.xs),
-              child: ActionChip(
-                backgroundColor: AppColors.accent.withValues(alpha: 0.15),
-                side: BorderSide(color: AppColors.accent.withValues(alpha: 0.5)),
-                label: Text(
-                  label,
-                  style: AppTypography.uiCaption.copyWith(
-                    color: AppColors.inkPrimary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+              child: GoldOutlineChip(
+                label: label,
                 onPressed: () {
                   _inputController.text = label;
                   _handleSend(manager);
@@ -628,52 +591,9 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  /// Player Input Bubble: Clean UI sans-serif face, aligned right with subtle surface-color background.
+  /// Player Input Bubble: Custom gold-bordered player bubble with subtle glow.
   Widget _buildPlayerInputBubble(String text) {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: Container(
-        margin: const EdgeInsets.only(
-          left: 48.0,
-          bottom: AppSpacing.md,
-          top: AppSpacing.xs,
-        ),
-        padding: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceElevated,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(AppSpacing.radiusLg),
-            topRight: Radius.circular(AppSpacing.radiusLg),
-            bottomLeft: Radius.circular(AppSpacing.radiusLg),
-            bottomRight: Radius.circular(AppSpacing.radiusSm),
-          ),
-          border: Border.all(
-            color: AppColors.accent.withValues(alpha: 0.4),
-            width: 1,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              'Divine Manifestation',
-              style: AppTypography.uiCaption.copyWith(
-                color: AppColors.accent,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              text,
-              style: AppTypography.uiBody.copyWith(
-                color: AppColors.inkPrimary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    return GoldBorderedPlayerBubble(text: text);
   }
 
   /// Slide-Out End Drawer holding Living NPCs Roster, World Memory, and Character Inventory

@@ -467,8 +467,8 @@ Return ONLY valid JSON matching this exact structure:
           }
         ],
         'npc_updates': npcUpdates,
-        'inventory_add': [],
-        'inventory_remove': [],
+        'inventory_add': const [],
+        'inventory_remove': const [],
         'location_change': null
       }
     });

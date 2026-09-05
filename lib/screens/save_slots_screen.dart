@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../theme/app_spacing.dart';
+import '../widgets/custom_ui_components.dart';
 import '../models/save_slot.dart';
 import '../models/game_state.dart';
 import '../database/save_slot_repository.dart';
@@ -130,12 +131,12 @@ class _SaveSlotsScreenState extends State<SaveSlotsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Pocket Dimension — Saved Realms', style: AppTypography.uiHeader),
-        backgroundColor: AppColors.surface,
+      appBar: IlluminatedHeaderBar(
+        title: 'Pocket Dimension',
+        subtitle: 'Saved Realms',
         actions: [
-          IconButton(
-            icon: const Icon(Icons.tune_rounded, color: AppColors.accent),
+          GoldIconButton(
+            icon: Icons.tune_rounded,
             onPressed: () {
               if (widget.onOpenSettings != null) {
                 widget.onOpenSettings!();
@@ -143,11 +144,13 @@ class _SaveSlotsScreenState extends State<SaveSlotsScreen> {
             },
             tooltip: 'Grimoire Configurations',
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
+          const SizedBox(width: AppSpacing.xs),
+          GoldIconButton(
+            icon: Icons.refresh_rounded,
             onPressed: _loadSlots,
             tooltip: 'Refresh Save Slots',
           ),
+          const SizedBox(width: AppSpacing.xs),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert_rounded, color: AppColors.inkMuted),
             tooltip: 'Advanced Options',
@@ -185,18 +188,10 @@ class _SaveSlotsScreenState extends State<SaveSlotsScreen> {
                     return _buildIllustratedSaveCard(slot);
                   },
                 ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.accent,
-        foregroundColor: AppColors.background,
+      floatingActionButton: IlluminatedButton(
+        label: 'Weave New World',
+        icon: Icons.auto_awesome_rounded,
         onPressed: widget.onNewAdventure,
-        icon: const Icon(Icons.auto_awesome),
-        label: Text(
-          'Weave New World',
-          style: AppTypography.uiHeader.copyWith(
-            color: AppColors.background,
-            fontSize: 14,
-          ),
-        ),
       ),
     );
   }
@@ -295,143 +290,99 @@ class _SaveSlotsScreenState extends State<SaveSlotsScreen> {
     String formattedDate =
         '$monthName ${dt.day}, ${dt.year} • ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppSpacing.borderRadiusLg,
-        border: Border.all(color: moodColor.withValues(alpha: 0.5), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: moodColor.withValues(alpha: 0.15),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: AppSpacing.borderRadiusLg,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      child: IlluminatedSaveSlotCard(
+        onTap: () => _handleLoadSlot(slot),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top Illustrated Banner with Mood Swatch Gradient
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    moodColor.withValues(alpha: 0.35),
-                    AppColors.surfaceElevated,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                border: Border(
-                  bottom: BorderSide(color: moodColor.withValues(alpha: 0.3)),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: moodColor,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: moodColor.withValues(alpha: 0.8),
-                          blurRadius: 6,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      worldName,
-                      style: AppTypography.narrationDisplay.copyWith(
-                        fontSize: 18,
-                        color: AppColors.inkPrimary,
+            // Top Illustrated Header Row
+            Row(
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: moodColor,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: moodColor.withValues(alpha: 0.8),
+                        blurRadius: 6,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    worldName,
+                    style: AppTypography.narrationDisplay.copyWith(
+                      fontSize: 18,
+                      color: AppColors.inkPrimary,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, color: AppColors.suspicionHigh),
-                    onPressed: () => _handleDeleteSlot(slot),
-                    tooltip: 'Delete Save Slot',
-                  ),
-                ],
-              ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: AppColors.suspicionHigh),
+                  onPressed: () => _handleDeleteSlot(slot),
+                  tooltip: 'Delete Save Slot',
+                ),
+              ],
             ),
+            const SizedBox(height: AppSpacing.sm),
 
-            // Card Body Details
-            Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Character Name & Physical Guise (Sans Face)
-                  Row(
-                    children: [
-                      const Icon(Icons.masks_outlined, size: 16, color: AppColors.accent),
-                      const SizedBox(width: AppSpacing.xs),
-                      Expanded(
-                        child: Text(
-                          '$charName — $charGuise',
-                          style: AppTypography.uiBody.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.accent,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
+            // Character Name & Guise
+            Row(
+              children: [
+                const Icon(Icons.masks_outlined, size: 16, color: AppColors.accent),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    '$charName — $charGuise',
+                    style: AppTypography.uiBody.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.accent,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: AppSpacing.xs),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xs),
 
-                  // Location Tag
-                  Row(
-                    children: [
-                      const Icon(Icons.place_outlined, size: 14, color: AppColors.inkSecondary),
-                      const SizedBox(width: AppSpacing.xs),
-                      Text(
-                        'Location: $location',
-                        style: AppTypography.uiCaption.copyWith(color: AppColors.inkSecondary),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.md),
+            // Location Tag
+            Row(
+              children: [
+                const Icon(Icons.place_outlined, size: 14, color: AppColors.inkSecondary),
+                const SizedBox(width: AppSpacing.xs),
+                Text(
+                  'Location: $location',
+                  style: AppTypography.uiCaption.copyWith(color: AppColors.inkSecondary),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
 
-                  // Footer: Timestamp & Resume Action
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        formattedDate,
-                        style: AppTypography.uiCaption.copyWith(fontSize: 11),
-                      ),
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: moodColor.withValues(alpha: 0.2),
-                          foregroundColor: AppColors.accent,
-                          side: BorderSide(color: moodColor),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.md,
-                            vertical: AppSpacing.xs,
-                          ),
-                        ),
-                        onPressed: () => _handleLoadSlot(slot),
-                        icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                        label: const Text('Resume Realm', style: AppTypography.uiBody),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+            // Footer: Timestamp & Resume Action Button
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  formattedDate,
+                  style: AppTypography.uiCaption.copyWith(fontSize: 11),
+                ),
+                IlluminatedButton(
+                  label: 'Resume Realm',
+                  icon: Icons.play_arrow_rounded,
+                  isPrimary: true,
+                  onPressed: () => _handleLoadSlot(slot),
+                ),
+              ],
             ),
           ],
         ),

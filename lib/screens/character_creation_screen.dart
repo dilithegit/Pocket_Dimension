@@ -7,6 +7,7 @@ import '../models/character.dart';
 import '../models/state_delta.dart';
 import '../network/gemini_client.dart';
 import '../state/game_state_manager.dart';
+import '../widgets/custom_ui_components.dart';
 
 /// Character Creation Screen — God-Mode setup collecting character name, physical/conceptual guise (origin),
 /// and starting inventory items. Zero HP, zero Mana, and zero traditional failure metrics.
@@ -112,9 +113,9 @@ class _CharacterCreationScreenState extends State<CharacterCreationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Manifestation — Character Setup', style: AppTypography.uiHeader),
-        backgroundColor: AppColors.surface,
+      appBar: IlluminatedHeaderBar(
+        title: 'Manifestation',
+        subtitle: 'Mortal Guise Setup',
         actions: [
           Container(
             margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
@@ -205,13 +206,10 @@ class _CharacterCreationScreenState extends State<CharacterCreationScreen> {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                IconButton.filled(
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    minimumSize: const Size(48, 48),
-                  ),
+                GoldIconButton(
+                  icon: Icons.add,
                   onPressed: _addItem,
-                  icon: const Icon(Icons.add, color: AppColors.background),
+                  tooltip: 'Add Relic',
                 ),
               ],
             ),
@@ -238,30 +236,11 @@ class _CharacterCreationScreenState extends State<CharacterCreationScreen> {
             // Submit Button
             SizedBox(
               width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accent,
-                  foregroundColor: AppColors.background,
-                ),
+              child: IlluminatedButton(
+                label: _isGeneratingBriefing ? 'Weaving Opening World Briefing...' : 'Enter Realm as Deity',
+                icon: Icons.play_arrow_rounded,
+                isLoading: _isGeneratingBriefing,
                 onPressed: _isGeneratingBriefing ? null : _handleSubmit,
-                icon: _isGeneratingBriefing
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.background,
-                        ),
-                      )
-                    : const Icon(Icons.play_arrow_rounded),
-                label: Text(
-                  _isGeneratingBriefing ? 'Weaving Opening World Briefing...' : 'Enter Realm as Deity',
-                  style: AppTypography.uiHeader.copyWith(
-                    color: AppColors.background,
-                    fontSize: 16,
-                  ),
-                ),
               ),
             ),
           ],

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../theme/app_spacing.dart';
+import '../widgets/custom_ui_components.dart';
 import '../state/game_state_manager.dart';
 
 /// SettingsScreen — Immersive Grimoire Configurations page.
@@ -20,11 +21,11 @@ class SettingsScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Grimoire Configurations', style: AppTypography.uiHeader),
-        backgroundColor: AppColors.surface,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+      appBar: IlluminatedHeaderBar(
+        title: 'Grimoire Configurations',
+        subtitle: 'Ethereal Tether & Realm Settings',
+        leading: GoldIconButton(
+          icon: Icons.arrow_back_rounded,
           onPressed: () {
             if (onBack != null) {
               onBack!();

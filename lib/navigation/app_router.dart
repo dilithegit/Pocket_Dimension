@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 import '../screens/save_slots_screen.dart';
 import '../screens/world_weaver_screen.dart';
 import '../screens/character_creation_screen.dart';
@@ -100,21 +101,38 @@ class _AppRouterState extends State<AppRouter> {
         _handlePop();
       },
       child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 350),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
+        duration: const Duration(milliseconds: 400),
+        switchInCurve: Curves.easeInOut,
+        switchOutCurve: Curves.easeInOut,
         transitionBuilder: (Widget child, Animation<double> animation) {
-          final slideAnimation = Tween<Offset>(
-            begin: const Offset(0.04, 0.0),
-            end: Offset.zero,
-          ).animate(animation);
+          final fadeAnimation = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeInOut,
+          );
 
-          return FadeTransition(
-            opacity: animation,
-            child: SlideTransition(
-              position: slideAnimation,
-              child: child,
-            ),
+          final goldFlickerAnimation = TweenSequence<double>([
+            TweenSequenceItem(tween: Tween<double>(begin: 0.0, end: 0.20), weight: 40),
+            TweenSequenceItem(tween: Tween<double>(begin: 0.20, end: 0.0), weight: 60),
+          ]).animate(animation);
+
+          return Stack(
+            children: [
+              FadeTransition(
+                opacity: fadeAnimation,
+                child: child,
+              ),
+              AnimatedBuilder(
+                animation: goldFlickerAnimation,
+                builder: (context, _) {
+                  if (goldFlickerAnimation.value <= 0.005) return const SizedBox.shrink();
+                  return IgnorePointer(
+                    child: Container(
+                      color: AppColors.accent.withValues(alpha: goldFlickerAnimation.value),
+                    ),
+                  );
+                },
+              ),
+            ],
           );
         },
         child: activeScreen,

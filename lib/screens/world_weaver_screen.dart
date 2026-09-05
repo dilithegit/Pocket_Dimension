@@ -11,6 +11,7 @@ import '../models/state_delta.dart';
 import '../database/save_slot_repository.dart';
 import '../lore/lore_ingestion_manager.dart';
 import '../state/game_state_manager.dart';
+import '../widgets/custom_ui_components.dart';
 
 /// World Weaver Setup Screen - Entry screen to generate grounded fantasy worlds before character creation.
 class WorldWeaverScreen extends StatefulWidget {
@@ -193,9 +194,9 @@ class _WorldWeaverScreenState extends State<WorldWeaverScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('World Weaver — Concept Setup', style: AppTypography.uiHeader),
-        backgroundColor: AppColors.surface,
+      appBar: const IlluminatedHeaderBar(
+        title: 'World Weaver',
+        subtitle: 'Concept & Cosmology Setup',
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.lg),
@@ -233,33 +234,11 @@ class _WorldWeaverScreenState extends State<WorldWeaverScreen> {
             // Action Button
             SizedBox(
               width: double.infinity,
-              height: 48,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accent,
-                  foregroundColor: AppColors.background,
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: AppSpacing.borderRadiusMd,
-                  ),
-                ),
+              child: IlluminatedButton(
+                label: _isGenerating ? 'Weaving Cosmology...' : 'Weave World Bible',
+                icon: Icons.auto_awesome,
+                isLoading: _isGenerating,
                 onPressed: _isGenerating ? null : _handleGenerate,
-                icon: _isGenerating
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.background,
-                        ),
-                      )
-                    : const Icon(Icons.auto_awesome),
-                label: Text(
-                  _isGenerating ? 'Weaving Cosmology...' : 'Weave World Bible',
-                  style: AppTypography.uiHeader.copyWith(
-                    color: AppColors.background,
-                    fontSize: 15,
-                  ),
-                ),
               ),
             ),
 
@@ -284,26 +263,23 @@ class _WorldWeaverScreenState extends State<WorldWeaverScreen> {
               const SizedBox(height: AppSpacing.sm),
 
               // Location Card
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Starting Location: ${_generatedWorld!.currentLocation}',
-                        style: AppTypography.narrationDisplay.copyWith(fontSize: 18),
+              IlluminatedSaveSlotCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Starting Location: ${_generatedWorld!.currentLocation}',
+                      style: AppTypography.narrationDisplay.copyWith(fontSize: 18),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Consequence Echoes: ${_generatedWorld!.consequenceWeb.length}',
+                      style: AppTypography.uiBody.copyWith(
+                        color: AppColors.accent,
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        'Consequence Echoes: ${_generatedWorld!.consequenceWeb.length}',
-                        style: AppTypography.uiBody.copyWith(
-                          color: AppColors.accent,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -332,13 +308,14 @@ class _WorldWeaverScreenState extends State<WorldWeaverScreen> {
               const Text('Generated Deep-Lore Inhabitants', style: AppTypography.uiHeader),
               const SizedBox(height: AppSpacing.xs),
               ..._generatedWorld!.npcRelationships.values.map(
-                (npc) => Card(
-                  margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: ListTile(
-                    title: Text(npc.name, style: AppTypography.loreTitle.copyWith(fontSize: 15)),
-                    subtitle: Column(
+                (npc) => Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  child: IlluminatedSaveSlotCard(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Text(npc.name, style: AppTypography.loreTitle.copyWith(fontSize: 15)),
+                        const SizedBox(height: AppSpacing.xs),
                         Text('${npc.role} • ${npc.culturalArchetype}',
                             style: AppTypography.uiBody.copyWith(fontSize: 12)),
                         Text('Lore Origin: ${npc.loreOrigin}',
@@ -355,31 +332,18 @@ class _WorldWeaverScreenState extends State<WorldWeaverScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.border),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
+                    child: IlluminatedButton(
+                      label: 'Re-Weave World',
+                      isPrimary: false,
                       onPressed: _handleGenerate,
-                      child: const Text('Re-Weave World', style: AppTypography.uiBody),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.accent,
-                        foregroundColor: AppColors.background,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
+                    child: IlluminatedButton(
+                      label: 'Accept World',
+                      isPrimary: true,
                       onPressed: _handleAccept,
-                      child: Text(
-                        'Accept World',
-                        style: AppTypography.uiHeader.copyWith(
-                          color: AppColors.background,
-                          fontSize: 15,
-                        ),
-                      ),
                     ),
                   ),
                 ],

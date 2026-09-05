@@ -5,10 +5,17 @@ description: Use whenever building, modifying, or reviewing any Flutter widget, 
 
 # Pocket Dimension — UI Conventions
 
-Pocket Dimension is a text-driven AI-DM RPG with a parchment/illustrated-lore aesthetic
-(same visual family as hand-drawn fantasy factbooks: warm paper tones, ink-line
-detailing, restrained ornamentation). Every screen must read as "an illustrated
-storybook with a pulse," not a generic Material dark-mode app.
+Pocket Dimension is a text-driven AI-DM RPG with a **dark illuminated-manuscript
+aesthetic**: deep indigo/void backgrounds with warm gold accents, like a
+grimoire read by candlelight rather than a paper factbook in daylight. This
+direction was confirmed deliberately (not a default Material fallback) —
+every screen must read as "an illuminated manuscript with a pulse," built from
+custom-shaped components, not default Material widgets with colors swapped in.
+
+**Known open item**: the app icon concept (oxblood leather, warm parchment
+background, brass clasp) predates this direction and currently clashes with
+it — revisit the icon to match the dark indigo/gold palette once the in-app
+polish pass below is done, so the two aren't fighting each other.
 
 ## Non-negotiable rule
 
@@ -20,11 +27,11 @@ a style choice — flag it and fix it rather than adding a new one-off value.
 ## Design tokens (define these in `lib/theme/` if not already present)
 
 **Color roles** — not literal hex values, define semantically:
-- `background` — warm parchment base, not pure black or pure white
-- `surface` — card/panel background, slightly lifted from background
-- `ink` — primary text color, near-black with warmth, not pure #000
-- `accent` — one accent color per active World Bible (derived from world mood/theme),
-  used sparingly: primary action, active state, narration highlight
+- `background` — deep indigo/blue-black void, not pure #000
+- `surface` — card/panel background, a lifted dark indigo, distinct from background
+- `ink` — primary text color, light lavender-white, not pure #FFF
+- `accent` — warm parchment-gold, used sparingly: primary action, active state,
+  narration highlight, illuminated borders/flourishes
 - `memoryDormant / memoryBrewing / memoryActive / memoryResolved` — a small color
   family for tagging consequence-entry status in the World Memory panel (subtle,
   informational — not an alarm gradient; this system has no threat meter)
@@ -41,13 +48,31 @@ a style choice — flag it and fix it rather than adding a new one-off value.
 
 ## Component conventions
 
-- **Save slot cards**: illustrated, not plain list rows — show a mood-color swatch or
-  small icon derived from the world's `culturalArchetype`/theme, world name, last-played
-  timestamp, character name
-- **Chat/narration bubbles**: DM narration in the serif display face, player input in
-  the UI sans face — visually distinct voices
-- **Buttons**: primary action uses `accent`, secondary/destructive actions stay muted —
-  don't let every button compete for attention
+**Custom, not default Material.** This is the actual fix for "feels cheap" —
+the audit found real `AppBar`, `ActionChip`, and `Card` primitives with colors
+reskinned on top, which reads as a themed default app, not a bespoke one.
+Every component below should be a custom-shaped/custom-painted widget, not a
+Material primitive with a `color:` property changed:
+
+- **Save slot cards**: illustrated, not a `Card` with a border — custom shape
+  with an illuminated gold corner flourish or filigree line, a mood-color
+  swatch or small icon derived from the world's `culturalArchetype`/theme,
+  world name, last-played timestamp, character name
+- **Chat/narration bubbles**: DM narration in the serif display face, player
+  input in the UI sans face — visually distinct voices. Player input should be
+  a custom-shaped bubble (not a default `Container` with `BorderRadius`), with
+  a subtle gold-outline treatment consistent with the illuminated-manuscript
+  direction
+- **Buttons**: custom-shaped, not stock `ElevatedButton`/`IconButton.filled` —
+  primary action uses `accent` with a subtle glow/illuminated edge, secondary/
+  destructive actions stay muted — don't let every button compete for attention
+- **Quick-reply/suggestion chips** (used by both the online DM and the
+  offline story engine's fallback suggestions): custom shape with a thin gold
+  outline, not stock `ActionChip`
+- **App bar / top chrome**: consider whether a default `AppBar` fits an
+  illuminated-manuscript feel at all, or whether a custom top treatment
+  (an illuminated title banner, no hard Material elevation shadow) reads
+  better — don't default to `AppBar` just because it's the Flutter default
 - **World Memory panel**: lives in the existing end-drawer (replacing the old
   "Regional Rumors" tab) as a scrollable list of consequence entries — summary,
   involved NPCs, and a small status tag using the `memory*` color family. This is
@@ -63,8 +88,14 @@ a style choice — flag it and fix it rather than adding a new one-off value.
 ## Motion
 
 - Text reveal for DM narration should feel like it's being written, not dumped
-- Screen transitions: consistent single transition style project-wide (e.g. fade +
-  slight slide) — don't let different screens get different transition styles
+- Screen transitions: consistent single **bespoke** transition project-wide
+  (not Flutter's default route transition) — e.g. a slow fade through the
+  indigo void with a brief gold flicker, distinct enough to feel authored
+  rather than default. Every screen must use the same one.
+- Consider a small illuminated flourish (a glowing drop-cap, a gold underline
+  animation) on the first letter of an Opening World Briefing or major story
+  beat — small, not gratuitous, but this is the kind of detail that separates
+  "themed" from "designed"
 - No gratuitous particle/confetti effects — motion should support the reading pace,
   not compete with it
 
@@ -88,8 +119,9 @@ screen bypass it by navigating directly.
 
 ## Accessibility
 
-- Text/background contrast must pass WCAG AA even with the warm parchment palette —
-  check this explicitly, warm-toned palettes are easy to under-contrast
+- Text/background contrast must pass WCAG AA on the dark indigo/gold palette —
+  check this explicitly, gold-on-dark-indigo can under-contrast at lower
+  opacities even though it looks fine at full brightness
 - Minimum 44x44 logical-pixel tap targets on all interactive elements
 - Don't encode suspicion state in color alone — pair the ambient tint with a small
   textual/iconographic cue for colorblind accessibility
