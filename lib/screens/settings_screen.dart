@@ -50,7 +50,7 @@ class SettingsScreen extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.xl),
 
-            // Offline Mode: Pre-Woven Nigerian Realm Card
+            // Offline / Online Mode Realm Picker Card
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(AppSpacing.md),
@@ -76,38 +76,73 @@ class SettingsScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Offline Mode: Pre-Woven Nigerian Realm',
+                                'Realm & Story Engine Mode',
                                 style: AppTypography.loreTitle.copyWith(fontSize: 15),
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                manager.isOfflineMode ? 'ACTIVE (Local Engine)' : 'INACTIVE (Online API)',
+                                manager.isOfflineMode ? 'OFFLINE ENGINE ACTIVE' : 'ONLINE API ACTIVE',
                                 style: AppTypography.uiCaption.copyWith(
-                                  color: manager.isOfflineMode ? AppColors.suspicionLow : AppColors.inkMuted,
+                                  color: manager.isOfflineMode ? AppColors.suspicionLow : AppColors.memoryActive,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        Switch(
-                          value: manager.isOfflineMode,
-                          activeThumbColor: AppColors.accent,
-                          onChanged: (value) {
-                            manager.setOfflineMode(value);
-                          },
-                        ),
                       ],
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     const Divider(),
                     const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'When active, World Weaver generation bypasses live Gemini network calls and loads the pre-configured Nigerian Mythology dataset (Mythical Surulere, Sacred Osogbo Grove, Olokun Spire, & Orisha Lore Keepers). Player inputs will trigger a local branching narrative engine.',
-                      style: AppTypography.uiBody.copyWith(
-                        fontSize: 13,
-                        color: AppColors.inkSecondary,
+
+                    RadioListTile<OfflineModeType>(
+                      title: Text(
+                        'Online AI DM Engine (Gemini 3.5 Flash-Lite)',
+                        style: AppTypography.loreTitle.copyWith(fontSize: 14),
                       ),
+                      subtitle: Text(
+                        'Live generative AI DM with SSE streaming and RAG grounding context.',
+                        style: AppTypography.uiCaption,
+                      ),
+                      value: OfflineModeType.online,
+                      groupValue: manager.offlineModeType,
+                      activeColor: AppColors.accent,
+                      onChanged: (val) {
+                        if (val != null) manager.setOfflineModeType(val);
+                      },
+                    ),
+                    RadioListTile<OfflineModeType>(
+                      title: Text(
+                        'Offline: Pre-Woven Nigerian Sandbox',
+                        style: AppTypography.loreTitle.copyWith(fontSize: 14),
+                      ),
+                      subtitle: Text(
+                        'Zero-network sandbox exploring Mythical Surulere, Osogbo Grove, and Olokun Spire.',
+                        style: AppTypography.uiCaption,
+                      ),
+                      value: OfflineModeType.nigerianSandbox,
+                      groupValue: manager.offlineModeType,
+                      activeColor: AppColors.accent,
+                      onChanged: (val) {
+                        if (val != null) manager.setOfflineModeType(val);
+                      },
+                    ),
+                    RadioListTile<OfflineModeType>(
+                      title: Text(
+                        'Offline: Greek-African Mythic Tale',
+                        style: AppTypography.loreTitle.copyWith(fontSize: 14),
+                      ),
+                      subtitle: Text(
+                        'Zero-network authored story graph through Siwa-Amun, Alexandria-Nok, and Atlas-Olokun.',
+                        style: AppTypography.uiCaption,
+                      ),
+                      value: OfflineModeType.greekAfricanFantasy,
+                      groupValue: manager.offlineModeType,
+                      activeColor: AppColors.accent,
+                      onChanged: (val) {
+                        if (val != null) manager.setOfflineModeType(val);
+                      },
                     ),
                   ],
                 ),

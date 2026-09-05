@@ -9,6 +9,15 @@ import '../database/save_slot_repository.dart';
 import '../lore/lore_retrieval_manager.dart';
 import '../network/gemini_client.dart';
 
+import '../offline_story/story_engine.dart';
+import '../offline_story/story_graph.dart';
+
+enum OfflineModeType {
+  online,
+  nigerianSandbox,
+  greekAfricanFantasy,
+}
+
 /// GameStateManager manages in-memory GameState, enforces Schema Version 2 canonical rules,
 /// applies AI DM StateDeltas safely, handles memory summarization thresholds, and extends
 /// ChangeNotifier to trigger Flutter UI rebuilds reactively.
@@ -16,7 +25,9 @@ class GameStateManager extends ChangeNotifier {
   GameState _state;
   int? _activeSlotId;
   String _activeSlotName;
-  bool _isOfflineMode = false;
+  OfflineModeType _offlineModeType = OfflineModeType.online;
+  StoryEngine? _activeStoryEngine;
+  List<String> _currentSuggestedActions = const [];
   bool _isProcessing;
 
   GameStateManager({
@@ -35,11 +46,30 @@ class GameStateManager extends ChangeNotifier {
   /// Get current immutable GameState snapshot.
   GameState get state => _state;
 
-  /// Offline mode status.
-  bool get isOfflineMode => _isOfflineMode;
+  /// Offline mode status & type.
+  OfflineModeType get offlineModeType => _offlineModeType;
+  bool get isOfflineMode => _offlineModeType != OfflineModeType.online;
+
+  void setOfflineModeType(OfflineModeType mode) {
+    _offlineModeType = mode;
+    notifyListeners();
+  }
 
   void setOfflineMode(bool enabled) {
-    _isOfflineMode = enabled;
+    _offlineModeType = enabled ? OfflineModeType.nigerianSandbox : OfflineModeType.online;
+    notifyListeners();
+  }
+
+  StoryEngine? get activeStoryEngine => _activeStoryEngine;
+  List<String> get currentSuggestedActions => _currentSuggestedActions;
+
+  void setStoryEngine(StoryEngine engine) {
+    _activeStoryEngine = engine;
+    notifyListeners();
+  }
+
+  void setSuggestedActions(List<String> actions) {
+    _currentSuggestedActions = actions;
     notifyListeners();
   }
 

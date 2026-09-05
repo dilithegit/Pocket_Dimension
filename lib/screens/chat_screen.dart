@@ -7,6 +7,8 @@ import '../models/game_state.dart';
 import '../models/character.dart';
 import '../models/state_delta.dart';
 import '../network/gemini_client.dart';
+import '../offline_story/story_engine.dart';
+import '../offline_story/story_graph.dart';
 import '../state/game_state_manager.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
@@ -37,6 +39,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Timer? _streamTimer;
 
   bool _hasRevealedInitialBriefing = false;
+  List<String> _suggestedActions = [];
 
   @override
   void initState() {
@@ -90,9 +93,27 @@ class _ChatScreenState extends State<ChatScreen> {
       final existingWebBeforeTurn = List<ConsequenceEntry>.from(manager.state.world.consequenceWeb);
 
       if (manager.isOfflineMode) {
-        delta = _buildOfflineMockTurn(manager.state, text);
-        await _animateTextReveal(delta.narration);
-        manager.applyDelta(delta, playerInput: text);
+        if (manager.offlineModeType == OfflineModeType.greekAfricanFantasy) {
+          if (manager.activeStoryEngine == null) {
+            final graph = await StoryGraphLoader.loadFromAsset('assets/stories/greek_african_fantasy.json');
+            manager.setStoryEngine(StoryEngine(graph: graph));
+          }
+          final result = manager.activeStoryEngine!.processTurn(
+            state: manager.state,
+            playerInput: text,
+          );
+          delta = result.delta;
+          setState(() {
+            _suggestedActions = result.suggestedActions;
+          });
+          manager.setSuggestedActions(result.suggestedActions);
+          await _animateTextReveal(delta.narration);
+          manager.applyDelta(delta, playerInput: text);
+        } else {
+          delta = _buildOfflineMockTurn(manager.state, text);
+          await _animateTextReveal(delta.narration);
+          manager.applyDelta(delta, playerInput: text);
+        }
       } else {
         setState(() {
           _isStreaming = true;
@@ -448,6 +469,9 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                 ),
 
+                // Suggested Quick-Reply Action Chips
+                _buildSuggestedActionsBar(manager),
+
                 // Input Bar with Ambient Glow
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 1000),
@@ -521,6 +545,43 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSuggestedActionsBar(GameStateManager manager) {
+    final actions = _suggestedActions.isNotEmpty
+        ? _suggestedActions
+        : manager.currentSuggestedActions;
+    if (actions.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+      color: AppColors.surface,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: actions.map((label) {
+            return Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.xs),
+              child: ActionChip(
+                backgroundColor: AppColors.accent.withValues(alpha: 0.15),
+                side: BorderSide(color: AppColors.accent.withValues(alpha: 0.5)),
+                label: Text(
+                  label,
+                  style: AppTypography.uiCaption.copyWith(
+                    color: AppColors.inkPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                onPressed: () {
+                  _inputController.text = label;
+                  _handleSend(manager);
+                },
+              ),
+            );
+          }).toList(),
+        ),
       ),
     );
   }

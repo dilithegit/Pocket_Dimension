@@ -1,0 +1,417 @@
+{
+  "storyId": "greek_african_fantasy",
+  "title": "The Oracle of Siwa-Amun and the Sunken Trench",
+  "description": "A mythic voyage through the syncretic realms of Siwa-Amun, Alexandria-Nok, and Atlas-Olokun.",
+  "startNodeId": "node_siwa_gate",
+  "nodes": [
+    {
+      "id": "node_siwa_gate",
+      "narrationVariants": [
+        "Dust swirls around the palm-crowned columns of the Oasis Shrine of Siwa-Amun. Golden sunbeams pierce the marble portico as desert breeze rustles the sacred grove. Before you stands the inner sanctuary of the Oracle, where Greek titans and African Orisha whisper as one.",
+        "The sacred oasis of Siwa-Amun glimmers in the shimmering heat. Carved stone reliefs depicting Zeus-Amun with sacred ram horns and golden lotus crowns frame the ancient portal leading into the oracle's domain."
+      ],
+      "branches": [
+        {
+          "label": "Approach the Pythia of Amun",
+          "intentKeywords": ["approach", "speak", "oracle", "pythia", "enter", "talk", "shrine", "meet", "greet"],
+          "targetNodeId": "node_oracle_chamber",
+          "flagsSet": {}
+        },
+        {
+          "label": "Inspect the Bronze Sundial",
+          "intentKeywords": ["inspect", "sun", "dial", "examine", "clock", "bronze", "sundial", "look", "read"],
+          "targetNodeId": "node_sun_dial",
+          "flagsSet": {}
+        }
+      ]
+    },
+    {
+      "id": "node_oracle_chamber",
+      "narrationVariants": [
+        "You step into the incense-laden sanctuary. The Pythia of Siwa-Amun sits upon a tripod of carved ebony and ivory, her eyes veiled in starlight. 'Greetings, {characterName} of the {origin},' she rasps. 'The threads of Olympus and the Sahel converge upon your presence.'",
+        "Deep within the cool stone chamber, fragrant lotus smoke coils around the golden statue of Zeus-Amun. The veiled Pythia looks up as you step forward: 'We have awaited your arrival, divine entity. The omens foretold your steps.'"
+      ],
+      "flagsSetOnEntry": {
+        "met_oracle": true
+      },
+      "consequence": {
+        "id": "c_oracle_blessing",
+        "summary": "Received sacred omens from the Pythia of Siwa-Amun",
+        "involvedNpcIds": ["npc_pythia"],
+        "location": "Siwa-Amun Sanctuary",
+        "originTurn": 1,
+        "spreadLevel": "rumored",
+        "status": "brewing",
+        "triggerHint": "The Pythia revealed ancient threads connecting Olympus and the Sahel"
+      },
+      "branches": [
+        {
+          "label": "Inquire about Atlas and Olokun's Trench",
+          "intentKeywords": ["atlas", "olokun", "trench", "sea", "ocean", "depths", "abyss", "water"],
+          "targetNodeId": "node_sea_trench",
+          "flagsSet": {
+            "sought_ocean_path": true
+          }
+        },
+        {
+          "label": "Ask about the Sphinx of Alexandria-Nok",
+          "intentKeywords": ["sphinx", "alexandria", "nok", "bronze", "riddle", "gate", "city"],
+          "targetNodeId": "node_sphinx_gate",
+          "flagsSet": {
+            "sought_sphinx_path": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "node_sun_dial",
+      "narrationVariants": [
+        "You kneel beside the colossal bronze sundial forged by Nok metallurgists and Archimedean scholars. Its gnomon casts a shadow aligned precisely with the constellations of Helios and Olorun, revealing hidden ciphers.",
+        "The sun rays catch the intricate bronze engravings of the sundial. Ciphers written in Greek script and ancient Ge'ez glyphs light up with a soft golden luminescence under your touch."
+      ],
+      "flagsSetOnEntry": {
+        "found_sun_cipher": true
+      },
+      "branches": [
+        {
+          "label": "Enter the Oracle's Sanctuary",
+          "intentKeywords": ["oracle", "chamber", "enter", "pythia", "inside", "sanctuary", "speak"],
+          "targetNodeId": "node_oracle_chamber",
+          "flagsSet": {}
+        },
+        {
+          "label": "Journey toward the Alexandria-Nok Sphinx",
+          "intentKeywords": ["delta", "sphinx", "river", "travel", "alexandria", "nok", "journey"],
+          "targetNodeId": "node_sphinx_gate",
+          "flagsSet": {}
+        }
+      ]
+    },
+    {
+      "id": "node_sphinx_gate",
+      "narrationVariants": [
+        "You stand at the border arches of Alexandria-Nok. Before you looms the colossal Bronze Sphinx, twenty cubits high, its obsidian eyes gleaming with mechanical consciousness.",
+        "The great iron gates of the delta are barred by the ancient Bronze Sphinx. Steam vents gently from its wings as it lowers its head, blocking the road forward."
+      ],
+      "branches": [
+        {
+          "label": "Answer the Sphinx's Riddle of Ages",
+          "intentKeywords": ["answer", "riddle", "solve", "speak", "wisdom", "riddles", "think"],
+          "targetNodeId": "node_riddle_solved",
+          "flagsSet": {}
+        },
+        {
+          "label": "Channel divine radiance to bypass the gate",
+          "intentKeywords": ["channel", "divine", "radiance", "force", "power", "magic", "spell", "light"],
+          "targetNodeId": "node_riddle_bypassed",
+          "flagsSet": {}
+        }
+      ]
+    },
+    {
+      "id": "node_riddle_solved",
+      "narrationVariants": [
+        "You utter the ancient synthesis of mortal time and divine eternal spark. The Bronze Sphinx bows its metallic head in profound reverence, its gears humming a harmonized chime as the gates swing open.",
+        "With a resonance like bronze bells, the Sphinx kneels before your intellect. 'Your wisdom echoes the ancient builders,' it intones, granting you unrestricted passage."
+      ],
+      "flagsSetOnEntry": {
+        "solved_sphinx_riddle": true
+      },
+      "consequence": {
+        "id": "c_sphinx_ally",
+        "summary": "Earned the allegiance of the Alexandria-Nok Bronze Sphinx",
+        "involvedNpcIds": ["npc_bronze_sphinx"],
+        "location": "Alexandria-Nok Delta",
+        "originTurn": 2,
+        "spreadLevel": "localized",
+        "status": "active",
+        "triggerHint": "The guardian Sphinx pledged its gears to your divine command"
+      },
+      "branches": [
+        {
+          "label": "Descend to the Sunken Trench of Atlas-Olokun",
+          "intentKeywords": ["trench", "sea", "atlas", "olokun", "dive", "descend", "ocean", "water"],
+          "targetNodeId": "node_sea_trench",
+          "flagsSet": {}
+        },
+        {
+          "label": "Ascend the Mount of Olympus-Kilmoku",
+          "intentKeywords": ["mount", "ascend", "olympus", "climb", "peak", "mountain", "zenith"],
+          "targetNodeId": "node_mount_zenith",
+          "flagsSet": {}
+        }
+      ]
+    },
+    {
+      "id": "node_riddle_bypassed",
+      "narrationVariants": [
+        "You flare with divine authority. Starlight and ancestral fire burst from your palms, forcing the mechanical gates wide open as the guardian Sphinx yields to sheer power.",
+        "The bronze guardian shuddered under the weight of your overwhelming aura. Steam hissed violently from its joints as the gates parted before your unyielding march."
+      ],
+      "flagsSetOnEntry": {
+        "bypassed_sphinx": true
+      },
+      "branches": [
+        {
+          "label": "Descend to the Sunken Trench of Atlas-Olokun",
+          "intentKeywords": ["descend", "trench", "sea", "atlas", "ocean", "dive", "water"],
+          "targetNodeId": "node_sea_trench",
+          "flagsSet": {}
+        },
+        {
+          "label": "Ascend the Mount Zenith",
+          "intentKeywords": ["climb", "mount", "ascend", "zenith", "peak", "mountain"],
+          "targetNodeId": "node_mount_zenith",
+          "flagsSet": {}
+        }
+      ]
+    },
+    {
+      "id": "node_sea_trench",
+      "narrationVariants": [
+        "You step into the bioluminescent waters of the abyssal trench. Far below, massive coral pillars support the world, held aloft by the joint force of Titan Atlas and Orisha Olokun.",
+        "The deep ocean trench glows with azure coral lights. Here, where the Mediterranean meets Atlantic currents, ancient shrines to Atlas and Olokun stand untouched by time."
+      ],
+      "branches": [
+        {
+          "label": "Commune with the Deep Sea Priests",
+          "intentKeywords": ["rite", "priests", "commune", "pray", "ritual", "speak", "join"],
+          "targetNodeId": "node_deep_rite",
+          "flagsSet": {}
+        },
+        {
+          "label": "Claim the Trident of Poseidon-Yemoja",
+          "intentKeywords": ["claim", "trident", "weapon", "take", "relic", "grab", "seize"],
+          "targetNodeId": "node_claim_trident",
+          "flagsSet": {}
+        }
+      ]
+    },
+    {
+      "id": "node_deep_rite",
+      "narrationVariants": [
+        "You join hands with the abyssal priests. As you chant the combined names of Poseidon, Yemoja, and Olokun, a protective dome of crystal water surrounds the trench.",
+        "The deep sea sanctuary rings with harmonic chants. A barrier of shimmering sea-glass rises, securing the ocean pillars against shadow storms."
+      ],
+      "flagsSetOnEntry": {
+        "allied_sea_priests": true
+      },
+      "consequence": {
+        "id": "c_sea_alliance",
+        "summary": "Unified the abyssal tides under Olokun-Atlas's banner",
+        "involvedNpcIds": ["npc_sea_priests"],
+        "location": "Abyssal Trench of Atlas-Olokun",
+        "originTurn": 3,
+        "spreadLevel": "localized",
+        "status": "active",
+        "triggerHint": "Deep ocean priests raised crystal wards in your honor"
+      },
+      "branches": [
+        {
+          "label": "Climb toward Mount Olympus-Kilmoku",
+          "intentKeywords": ["climb", "mount", "peak", "ascend", "mountain", "zenith"],
+          "targetNodeId": "node_mount_zenith",
+          "flagsSet": {}
+        },
+        {
+          "label": "Return to the Oasis of Siwa",
+          "intentKeywords": ["return", "siwa", "oasis", "sanctuary", "back", "gate"],
+          "targetNodeId": "node_siwa_triumph",
+          "flagsSet": {}
+        }
+      ]
+    },
+    {
+      "id": "node_claim_trident",
+      "narrationVariants": [
+        "You draw the Trident of Poseidon-Yemoja from its coral anvil. Lightning bolts of blue plasma arc across its three prongs, answering your command.",
+        "The ancient trident loosens from the bedrock. As your grip closes around the brass shaft, sea currents surge responsively throughout the trench."
+      ],
+      "flagsSetOnEntry": {
+        "has_trident": true
+      },
+      "branches": [
+        {
+          "label": "Confront the Shadow Typhon",
+          "intentKeywords": ["confront", "typhon", "shadow", "fight", "beast", "battle", "monster"],
+          "targetNodeId": "node_shadow_typhon",
+          "flagsSet": {}
+        },
+        {
+          "label": "March to Mount Zenith",
+          "intentKeywords": ["march", "mount", "climb", "zenith", "ascend", "peak"],
+          "targetNodeId": "node_mount_zenith",
+          "flagsSet": {}
+        }
+      ]
+    },
+    {
+      "id": "node_shadow_typhon",
+      "narrationVariants": [
+        "A dark tempest coalesces in the rift. Shadow Typhon, a primordial titan of storm and chaos, rises with hundred serpent heads roaring in unison.",
+        "Thunder crashes in the deep ocean trench as Shadow Typhon breaks free from its abyssal chains, its shadow enveloping the horizon."
+      ],
+      "branches": [
+        {
+          "label": "Strike with the Trident of Poseidon-Yemoja",
+          "intentKeywords": ["strike", "trident", "attack", "slay", "fight", "pierce", "stab"],
+          "targetNodeId": "node_typhon_slain",
+          "flagsSet": {}
+        },
+        {
+          "label": "Subdue with Orisha-Hellenic hymns",
+          "intentKeywords": ["hymn", "subdue", "chant", "bind", "sing", "calm", "soothe"],
+          "targetNodeId": "node_typhon_bound",
+          "flagsSet": {}
+        }
+      ]
+    },
+    {
+      "id": "node_typhon_slain",
+      "narrationVariants": [
+        "You hurl the trident with divine fury. Electric plasma tears through the shadow titan, causing Typhon to collapse into shimmering stardust that settles onto the sea floor.",
+        "With a triumphant burst of lightning, the Shadow Typhon is banished back into nonexistence, leaving the waters crystal clear."
+      ],
+      "flagsSetOnEntry": {
+        "slain_typhon": true
+      },
+      "branches": [
+        {
+          "label": "Ascend to Mount Zenith",
+          "intentKeywords": ["ascend", "mount", "climb", "zenith", "peak"],
+          "targetNodeId": "node_mount_zenith",
+          "flagsSet": {}
+        }
+      ]
+    },
+    {
+      "id": "node_typhon_bound",
+      "narrationVariants": [
+        "Your sacred hymn weaves a matrix of light around the beast. Shadow Typhon bows its hundred serpent heads, bound as a eternal guardian spirit of the deep.",
+        "The raging titan calms under the melody of ancient Orisha and Hellenic verses, submitting willingly to your divine guardianship."
+      ],
+      "flagsSetOnEntry": {
+        "bound_typhon": true
+      },
+      "branches": [
+        {
+          "label": "Ascend to Mount Zenith",
+          "intentKeywords": ["ascend", "mount", "climb", "zenith", "peak"],
+          "targetNodeId": "node_mount_zenith",
+          "flagsSet": {}
+        }
+      ]
+    },
+    {
+      "id": "node_siwa_triumph",
+      "narrationVariants": [
+        "You return to the Oasis of Siwa-Amun. The priests and townspeople greet you with palms and garlands of golden lotus, singing praise to your mythic triumph.",
+        "The Oasis flowers bloom brightly as you step onto the marble concourse. Siwa honors you as the living champion of the merged realms."
+      ],
+      "flagsSetOnEntry": {
+        "siwa_triumph": true
+      },
+      "branches": [
+        {
+          "label": "Ascend to Zenith Peak",
+          "intentKeywords": ["ascend", "peak", "mount", "zenith", "climb"],
+          "targetNodeId": "node_mount_zenith",
+          "flagsSet": {}
+        }
+      ]
+    },
+    {
+      "id": "node_mount_zenith",
+      "narrationVariants": [
+        "You stand at the stormy summit of Mount Olympus-Kilmoku. Above you, the celestial vault rotates slowly, revealing golden constellations of Zeus, Ogun, Athena, and Chango.",
+        "The peak of Mount Zenith touches the starry heavens. Cold mountain wind sweeps past as the celestial gates open before your divine aura."
+      ],
+      "branches": [
+        {
+          "label": "Unbind the Celestial Vault",
+          "intentKeywords": ["unbind", "vault", "celestial", "sky", "stars", "open", "free"],
+          "targetNodeId": "node_unbind_vault",
+          "flagsSet": {}
+        },
+        {
+          "label": "Restore balance between Greek and African Pantheons",
+          "intentKeywords": ["restore", "balance", "pantheon", "harmony", "peace", "unite", "weave"],
+          "targetNodeId": "node_pantheon_balance",
+          "flagsSet": {}
+        }
+      ]
+    },
+    {
+      "id": "node_unbind_vault",
+      "narrationVariants": [
+        "You shatter the crystal seals of the sky. Infinite starlight cascades down upon mortals and gods alike, unbinding the mortal realm into a realm of pure wonder.",
+        "The celestial dome parts under your touch. Streams of cosmic energy flow into every corner of the earth, inaugurating a boundless age of creation."
+      ],
+      "flagsSetOnEntry": {
+        "unbound_vault": true
+      },
+      "consequence": {
+        "id": "c_celestial_rebirth",
+        "summary": "Unbound the stars, reshaping the realm into a boundless cosmos",
+        "involvedNpcIds": ["npc_pantheon"],
+        "location": "Mount Olympus-Kilmoku Summit",
+        "originTurn": 4,
+        "spreadLevel": "global",
+        "status": "resolved",
+        "triggerHint": "The crystal sky seals were shattered, releasing infinite starlight"
+      },
+      "branches": [
+        {
+          "label": "Ascend to the Omnipotent Throne",
+          "intentKeywords": ["ascend", "throne", "god", "crown", "reign", "claim", "sit"],
+          "targetNodeId": "node_god_ending",
+          "flagsSet": {}
+        }
+      ]
+    },
+    {
+      "id": "node_pantheon_balance",
+      "narrationVariants": [
+        "You weave golden strands connecting Zeus-Amun, Olokun, Athena, and Chango into an unbroken circle of divine harmony. War ceases across every realm.",
+        "With majestic grace, you harmonize the ancient traditions. Thunder and ocean wave hum in sweet accord as the pantheons embrace."
+      ],
+      "flagsSetOnEntry": {
+        "pantheon_balanced": true
+      },
+      "consequence": {
+        "id": "c_pantheon_harmony",
+        "summary": "Harmonized ancient Greek and African pantheons into an unbroken golden era",
+        "involvedNpcIds": ["npc_pantheon"],
+        "location": "Mount Olympus-Kilmoku Summit",
+        "originTurn": 4,
+        "spreadLevel": "global",
+        "status": "resolved",
+        "triggerHint": "The celestial pantheons were golden-stitched into harmony"
+      },
+      "branches": [
+        {
+          "label": "Claim your rightful Throne of Harmony",
+          "intentKeywords": ["claim", "throne", "reign", "peace", "crown", "harmony", "sit"],
+          "targetNodeId": "node_harmony_ending",
+          "flagsSet": {}
+        }
+      ]
+    },
+    {
+      "id": "node_god_ending",
+      "narrationVariants": [
+        "You take your seat upon the Zenith Throne. As {characterName} of the {origin}, your sovereign will reigns eternal over the unbound stars of Siwa, Alexandria, and Olympus.",
+        "The Omnipotent Throne shines with supreme brilliance. All gods and mortals bow in reverence as your divine story becomes immortal legend."
+      ],
+      "branches": []
+    },
+    {
+      "id": "node_harmony_ending",
+      "narrationVariants": [
+        "You sit upon the Throne of Harmony. Hand in hand, the gods of Greece and Africa rule alongside you, establishing an age of peace that will never fade.",
+        "The golden hall rings with joy and song. As {characterName}, your legacy of balance unites every realm for eternity."
+      ],
+      "branches": []
+    }
+  ]
+}
