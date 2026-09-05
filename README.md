@@ -1,4 +1,4 @@
-# 📜 Pocket Dimension — Omnipotent God-Mode AI RPG Engine (v1.0.0)
+# 📜 Pocket Dimension — Omnipotent God-Mode AI RPG Engine (v2.5.0)
 
 > *"As an omnipotent deity, your physical or magical intent never fails. Stakes come from mortal reactions, relationships, and societal consequence webs."*
 
