@@ -65,9 +65,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
     try {
       StateDelta delta;
+      final existingWebBeforeTurn = List<ConsequenceEntry>.from(manager.state.world.consequenceWeb);
+
       if (manager.isOfflineMode) {
         delta = _buildOfflineMockTurn(manager.state, text);
         await _animateTextReveal(delta.narration);
+        manager.applyDelta(delta, playerInput: text);
       } else {
         setState(() {
           _isStreaming = true;
@@ -95,13 +98,12 @@ class _ChatScreenState extends State<ChatScreen> {
       }
 
       // Check for new or active consequence updates to fire notification overlay
-      final existingWeb = manager.state.world.consequenceWeb;
       for (final candidate in delta.consequenceUpdates) {
         if (candidate.summary.trim().isEmpty) continue;
-        final existingIdx = existingWeb.indexWhere((c) => c.id == candidate.id);
+        final existingIdx = existingWebBeforeTurn.indexWhere((c) => c.id == candidate.id);
         bool isNew = existingIdx < 0;
         bool statusFlippedToActive = !isNew &&
-            existingWeb[existingIdx].status != ConsequenceStatus.active &&
+            existingWebBeforeTurn[existingIdx].status != ConsequenceStatus.active &&
             candidate.status == ConsequenceStatus.active;
 
         if (isNew || statusFlippedToActive) {
@@ -116,10 +118,6 @@ class _ChatScreenState extends State<ChatScreen> {
           }
           break; // Trigger one notification per turn
         }
-      }
-
-      if (manager.isOfflineMode) {
-        manager.applyDelta(delta, playerInput: text);
       }
 
       _scrollToBottom();
@@ -716,6 +714,20 @@ class _ChatScreenState extends State<ChatScreen> {
                                       ),
                                       visualDensity: VisualDensity.compact,
                                       padding: EdgeInsets.zero,
+                                    ),
+                                    const Spacer(),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.place_outlined, size: 12, color: AppColors.inkSecondary),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          item.location,
+                                          style: AppTypography.uiCaption.copyWith(
+                                            color: AppColors.inkSecondary,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
