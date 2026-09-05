@@ -72,15 +72,15 @@ class ConsequenceEntry {
     return ConsequenceEntry(
       id: json['id'] as String? ?? 'consequence_${DateTime.now().millisecondsSinceEpoch}',
       summary: json['summary'] as String? ?? '',
-      involvedNpcIds: (json['involved_npc_ids'] as List<dynamic>?)
+      involvedNpcIds: ((json['involved_npc_ids'] ?? json['involvedNpcIds']) as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           const [],
       location: json['location'] as String? ?? 'Unknown Location',
-      originTurn: (json['origin_turn'] as num?)?.toInt() ?? 1,
-      spreadLevel: parseSpread(json['spread_level']),
+      originTurn: ((json['origin_turn'] ?? json['originTurn']) as num?)?.toInt() ?? 1,
+      spreadLevel: parseSpread(json['spread_level'] ?? json['spreadLevel']),
       status: parseStatus(json['status']),
-      triggerHint: json['trigger_hint'] as String?,
+      triggerHint: (json['trigger_hint'] ?? json['triggerHint']) as String?,
     );
   }
 

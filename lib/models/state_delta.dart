@@ -31,13 +31,14 @@ class StateDelta {
         ? asStringKeyedMap(json['state_delta'])
         : (json['delta'] is Map ? asStringKeyedMap(json['delta']) : json);
 
-    Map<String, dynamic> flags = rawDelta['flags_set'] is Map
-        ? asStringKeyedMap(rawDelta['flags_set'])
+    Map<String, dynamic> flags = (rawDelta['flags_set'] ?? rawDelta['flagsSet']) is Map
+        ? asStringKeyedMap(rawDelta['flags_set'] ?? rawDelta['flagsSet'])
         : const {};
 
     List<ConsequenceEntry> consequences = [];
-    if (rawDelta['consequence_updates'] is List) {
-      for (var item in (rawDelta['consequence_updates'] as List)) {
+    final rawConsequences = rawDelta['consequence_updates'] ?? rawDelta['consequenceUpdates'];
+    if (rawConsequences is List) {
+      for (var item in rawConsequences) {
         if (item is Map) {
           consequences.add(ConsequenceEntry.fromJson(asStringKeyedMap(item)));
         }
@@ -45,8 +46,9 @@ class StateDelta {
     }
 
     List<NpcRelationship> npcs = [];
-    if (rawDelta['npc_updates'] is List) {
-      for (var item in (rawDelta['npc_updates'] as List)) {
+    final rawNpcs = rawDelta['npc_updates'] ?? rawDelta['npcUpdates'];
+    if (rawNpcs is List) {
+      for (var item in rawNpcs) {
         if (item is Map) {
           final itemMap = asStringKeyedMap(item);
           String id = itemMap['id'] as String? ?? 'npc_${DateTime.now().millisecondsSinceEpoch}';
@@ -56,8 +58,9 @@ class StateDelta {
     }
 
     List<String> invAdd = [];
-    if (rawDelta['inventory_add'] is List) {
-      for (var item in (rawDelta['inventory_add'] as List)) {
+    final rawInvAdd = rawDelta['inventory_add'] ?? rawDelta['inventoryAdd'];
+    if (rawInvAdd is List) {
+      for (var item in rawInvAdd) {
         if (item is Map) {
           final m = asStringKeyedMap(item);
           String name = (m['name'] ?? m['id'] ?? '').toString();
@@ -69,8 +72,9 @@ class StateDelta {
     }
 
     List<String> invRem = [];
-    if (rawDelta['inventory_remove'] is List) {
-      for (var item in (rawDelta['inventory_remove'] as List)) {
+    final rawInvRem = rawDelta['inventory_remove'] ?? rawDelta['inventoryRemove'];
+    if (rawInvRem is List) {
+      for (var item in rawInvRem) {
         if (item is Map) {
           final m = asStringKeyedMap(item);
           String name = (m['name'] ?? m['id'] ?? '').toString();
@@ -81,7 +85,7 @@ class StateDelta {
       }
     }
 
-    String? loc = rawDelta['location_change'] as String?;
+    String? loc = (rawDelta['location_change'] ?? rawDelta['locationChange']) as String?;
 
     return StateDelta(
       narration: narration,
